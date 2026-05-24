@@ -63,13 +63,13 @@ contract GiftReactive is AbstractReactive {
     }
 
     function react(LogRecord calldata log) external vmOnly {
-        // GiftDeposited on Unichain → mintGiftEntry on Base
+        // GiftDeposited(bytes32 indexed giftId, address sender, bytes32 commitment,
+        //               uint128 amount0, uint128 amount1, uint32 dstChainId, uint64 expiresAt)
+        // → mintGiftEntry on Base
         if (log.chain_id == senderChainId && log._contract == senderContract && log.topic_0 == depositedTopic) {
-            // GiftDeposited(giftId indexed, sender indexed, commitment, amount0, amount1, dstChainId, expiresAt)
-            // topic_1 = giftId; data = (commitment, amount0, amount1, dstChainId, expiresAt)
             bytes32 giftId = bytes32(log.topic_1);
-            (bytes32 commitment, uint128 amount0, uint128 amount1, /*uint32 dstChainId*/, uint64 expiresAt)
-                = abi.decode(log.data, (bytes32, uint128, uint128, uint32, uint64));
+            (/*address sender*/, bytes32 commitment, uint128 amount0, uint128 amount1, /*uint32 dstChainId*/, uint64 expiresAt)
+                = abi.decode(log.data, (address, bytes32, uint128, uint128, uint32, uint64));
             uint128 expectedAmount = amount0 + amount1;
             bytes memory payload = abi.encodeWithSignature(
                 "mintGiftEntry(bytes32,bytes32,uint128,uint64)",
@@ -79,9 +79,8 @@ contract GiftReactive is AbstractReactive {
             return;
         }
 
-        // GiftClaimed on Base → unwindGift on Unichain
+        // GiftClaimed(bytes32 indexed giftId, address indexed claimer) → unwindGift on Unichain
         if (log.chain_id == recipientChainId && log._contract == recipientContract && log.topic_0 == claimedTopic) {
-            // GiftClaimed(giftId indexed, claimer indexed)
             bytes32 giftId = bytes32(log.topic_1);
             address claimer = address(uint160(log.topic_2));
             bytes memory payload = abi.encodeWithSignature(
@@ -92,13 +91,12 @@ contract GiftReactive is AbstractReactive {
             return;
         }
 
-        // GiftUnwound on Unichain → deliverGift on Base (after CCTP arrives — in MVP,
-        // we fire deliverGift immediately and rely on a separate CCTP relayer step).
+        // GiftUnwound(bytes32 indexed giftId, address recipient, uint128 principalReturned,
+        //             uint128 yieldReturned, uint32 dstChainId) → deliverGift on Base
         if (log.chain_id == senderChainId && log._contract == senderContract && log.topic_0 == unwoundTopic) {
-            // GiftUnwound(giftId indexed, recipient indexed, principalReturned, yieldReturned, dstChainId)
             bytes32 giftId = bytes32(log.topic_1);
-            (uint128 principalReturned, uint128 yieldReturned, /*uint32 dstChainId*/)
-                = abi.decode(log.data, (uint128, uint128, uint32));
+            (/*address recipient*/, uint128 principalReturned, uint128 yieldReturned, /*uint32 dstChainId*/)
+                = abi.decode(log.data, (address, uint128, uint128, uint32));
             uint128 totalAmount = principalReturned + yieldReturned;
             bytes memory payload = abi.encodeWithSignature(
                 "deliverGift(bytes32,uint128)",

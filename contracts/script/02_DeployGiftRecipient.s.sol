@@ -9,11 +9,12 @@ contract DeployGiftRecipient is Script {
     function run() external returns (GiftRecipient recipient) {
         address callbackProxy = vm.envAddress("BASE_SEPOLIA_CALLBACK_PROXY");
         IERC20 usdc = IERC20(vm.envAddress("BASE_SEPOLIA_USDC"));
+        address owner = vm.envAddress("DEPLOYER_ADDRESS");
         uint256 fundingWei = vm.envOr("GIFT_RECIPIENT_FUNDING_WEI", uint256(0.05 ether));
         uint256 pk = vm.envUint("PRIVATE_KEY");
 
         vm.startBroadcast(pk);
-        recipient = new GiftRecipient{value: fundingWei}(callbackProxy, usdc);
+        recipient = new GiftRecipient{value: fundingWei}(callbackProxy, usdc, owner);
         vm.stopBroadcast();
 
         console.log("GiftRecipient deployed at:", address(recipient));

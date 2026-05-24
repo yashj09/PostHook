@@ -14,6 +14,8 @@ import {GiftReactive} from "../src/GiftReactive.sol";
 ///   RSC_FUNDING_WEI (default 0.05 ether)
 contract DeployGiftReactive is Script {
     /// @dev Event signatures must match those declared in GiftSender / GiftRecipient.
+    // The signature string is independent of which args are indexed — it reflects
+    // type tuple only. So these don't change when we drop indexing on sender/recipient.
     string constant SIG_DEPOSITED = "GiftDeposited(bytes32,address,bytes32,uint128,uint128,uint32,uint64)";
     string constant SIG_CLAIMED = "GiftClaimed(bytes32,address)";
     string constant SIG_UNWOUND = "GiftUnwound(bytes32,address,uint128,uint128,uint32)";

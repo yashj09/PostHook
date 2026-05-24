@@ -12,7 +12,7 @@ contract ScaffoldTest is Test {
         // Use this contract address as the "callback proxy" placeholder.
         // AbstractCallback.constructor takes any address; auth is enforced
         // at call time, not construction.
-        GiftRecipient r = new GiftRecipient(address(this), IERC20(address(0xdead)));
+        GiftRecipient r = new GiftRecipient(address(this), IERC20(address(0xdead)), address(this));
         assertEq(r.giftCount(), 0);
     }
 }

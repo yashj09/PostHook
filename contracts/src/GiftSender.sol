@@ -55,9 +55,12 @@ contract GiftSender is AbstractCallback {
 
     address public owner;
 
+    /// @dev Only the giftId is indexed. Reactive Lasna RSCs were observed to
+    /// place the second-indexed arg into topic_1 (rather than the first), so
+    /// keeping a single indexed arg removes the ambiguity.
     event GiftDeposited(
         bytes32 indexed giftId,
-        address indexed sender,
+        address sender,
         bytes32 commitment,
         uint128 amount0,
         uint128 amount1,
@@ -68,7 +71,7 @@ contract GiftSender is AbstractCallback {
     event GiftExpired(bytes32 indexed giftId);
     event GiftUnwound(
         bytes32 indexed giftId,
-        address indexed recipient,
+        address recipient,
         uint128 principalReturned,
         uint128 yieldReturned,
         uint32  dstChainId
@@ -228,6 +231,16 @@ contract GiftSender is AbstractCallback {
         rvmIdOnly(rvm_id)
         authorizedSenderOnly
     {
+        _adminTransitionAndUnwind(giftId, recipient);
+    }
+
+    /// @notice Owner-gated fallback equivalent of `unwindGift` for testnet
+    /// operation under the relayer pattern.
+    function adminUnwindGift(bytes32 giftId, address recipient) external onlyOwner {
+        _adminTransitionAndUnwind(giftId, recipient);
+    }
+
+    function _adminTransitionAndUnwind(bytes32 giftId, address recipient) internal {
         Gift storage g = gifts[giftId];
         if (g.state != State.Deposited) revert InvalidGiftState();
         g.state = State.Claimed;

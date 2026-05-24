@@ -43,19 +43,48 @@ contract GiftRecipient is AbstractCallback {
     error InvalidGiftState();
     error InvalidSecret();
     error GiftExpired();
+    error NotOwner();
 
-    constructor(address _callbackProxy, IERC20 _usdc) AbstractCallback(_callbackProxy) payable {
+    address public owner;
+
+    constructor(address _callbackProxy, IERC20 _usdc, address _owner) AbstractCallback(_callbackProxy) payable {
         usdc = _usdc;
+        owner = _owner;
     }
 
-    /// @notice Called by the RSC immediately after Alice's deposit on Unichain
-    ///   to mirror the gift here so the recipient has something to claim against.
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert NotOwner();
+        _;
+    }
+
+    /// @notice Called by the RSC immediately after the deposit on the sender chain.
     function mintGiftEntry(
         bytes32 giftId,
         bytes32 commitment,
         uint128 expectedAmount,
         uint64  expiresAt
     ) external rvmIdOnly(rvm_id) authorizedSenderOnly {
+        _mintGiftEntry(giftId, commitment, expectedAmount, expiresAt);
+    }
+
+    /// @notice Owner-gated fallback for testnet operation when an external
+    /// relayer drives the cross-chain bridge instead of an RSC. Identical
+    /// effect to mintGiftEntry; bypasses the AbstractCallback auth.
+    function adminMintGiftEntry(
+        bytes32 giftId,
+        bytes32 commitment,
+        uint128 expectedAmount,
+        uint64  expiresAt
+    ) external onlyOwner {
+        _mintGiftEntry(giftId, commitment, expectedAmount, expiresAt);
+    }
+
+    function _mintGiftEntry(
+        bytes32 giftId,
+        bytes32 commitment,
+        uint128 expectedAmount,
+        uint64  expiresAt
+    ) internal {
         if (gifts[giftId].state != State.None) revert InvalidGiftState();
         gifts[giftId] = GiftEntry({
             commitment: commitment,
@@ -90,6 +119,16 @@ contract GiftRecipient is AbstractCallback {
         rvmIdOnly(rvm_id)
         authorizedSenderOnly
     {
+        _deliverGift(giftId, amount);
+    }
+
+    /// @notice Owner-gated fallback equivalent of `deliverGift` for testnet
+    /// operation under the relayer pattern.
+    function adminDeliverGift(bytes32 giftId, uint128 amount) external onlyOwner {
+        _deliverGift(giftId, amount);
+    }
+
+    function _deliverGift(bytes32 giftId, uint128 amount) internal {
         GiftEntry storage g = gifts[giftId];
         if (g.state != State.Claimed) revert InvalidGiftState();
         g.state = State.Delivered;
