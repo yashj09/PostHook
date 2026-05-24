@@ -4,24 +4,28 @@ pragma solidity ^0.8.26;
 import {Script, console} from "forge-std/Script.sol";
 import {GiftReactive} from "../src/GiftReactive.sol";
 
-/// @notice Deploys the RSC on Reactive Lasna. Topic hashes for the events we
-/// subscribe to are precomputed and passed in via env so this script doesn't
-/// depend on the other contracts' compilation artifacts at runtime.
+/// @notice Deploys the RSC on Reactive Lasna. Topic hashes are computed at
+/// script time from the event signatures so they cannot drift from the
+/// contract source.
 ///
 /// Required env vars:
 ///   SENDER_CHAIN_ID, RECIPIENT_CHAIN_ID
-///   GIFT_SENDER_ADDR (Unichain), GIFT_RECIPIENT_ADDR (Base)
-///   TOPIC_DEPOSITED, TOPIC_CLAIMED, TOPIC_UNWOUND
+///   UNICHAIN_SEPOLIA_GIFT_SENDER, BASE_SEPOLIA_GIFT_RECIPIENT
 ///   RSC_FUNDING_WEI (default 0.05 ether)
 contract DeployGiftReactive is Script {
+    /// @dev Event signatures must match those declared in GiftSender / GiftRecipient.
+    string constant SIG_DEPOSITED = "GiftDeposited(bytes32,address,bytes32,uint128,uint128,uint32,uint64)";
+    string constant SIG_CLAIMED = "GiftClaimed(bytes32,address)";
+    string constant SIG_UNWOUND = "GiftUnwound(bytes32,address,uint128,uint128,uint32)";
+
     function run() external returns (GiftReactive rsc) {
         uint256 senderChainId = vm.envUint("SENDER_CHAIN_ID");
         uint256 recipientChainId = vm.envUint("RECIPIENT_CHAIN_ID");
-        address giftSenderAddr = vm.envAddress("GIFT_SENDER_ADDR");
-        address giftRecipientAddr = vm.envAddress("GIFT_RECIPIENT_ADDR");
-        uint256 topicDeposited = vm.envUint("TOPIC_DEPOSITED");
-        uint256 topicClaimed = vm.envUint("TOPIC_CLAIMED");
-        uint256 topicUnwound = vm.envUint("TOPIC_UNWOUND");
+        address giftSenderAddr = vm.envAddress("UNICHAIN_SEPOLIA_GIFT_SENDER");
+        address giftRecipientAddr = vm.envAddress("BASE_SEPOLIA_GIFT_RECIPIENT");
+        uint256 topicDeposited = uint256(keccak256(bytes(SIG_DEPOSITED)));
+        uint256 topicClaimed = uint256(keccak256(bytes(SIG_CLAIMED)));
+        uint256 topicUnwound = uint256(keccak256(bytes(SIG_UNWOUND)));
         uint256 fundingWei = vm.envOr("RSC_FUNDING_WEI", uint256(0.05 ether));
 
         vm.startBroadcast();
