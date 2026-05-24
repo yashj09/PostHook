@@ -26,8 +26,9 @@ contract DeployGiftHook is Script {
         (address expected, bytes32 salt) = HookMiner.find(
             CREATE2_DEPLOYER, flags, type(GiftHook).creationCode, ctorArgs
         );
+        uint256 pk = vm.envUint("PRIVATE_KEY");
 
-        vm.startBroadcast();
+        vm.startBroadcast(pk);
         hook = new GiftHook{salt: salt}(poolManager, giftSender);
         vm.stopBroadcast();
 

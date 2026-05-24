@@ -27,8 +27,9 @@ contract DeployGiftReactive is Script {
         uint256 topicClaimed = uint256(keccak256(bytes(SIG_CLAIMED)));
         uint256 topicUnwound = uint256(keccak256(bytes(SIG_UNWOUND)));
         uint256 fundingWei = vm.envOr("RSC_FUNDING_WEI", uint256(0.05 ether));
+        uint256 pk = vm.envUint("PRIVATE_KEY");
 
-        vm.startBroadcast();
+        vm.startBroadcast(pk);
         rsc = new GiftReactive{value: fundingWei}(
             senderChainId,
             recipientChainId,

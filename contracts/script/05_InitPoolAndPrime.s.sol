@@ -47,7 +47,8 @@ contract InitPoolAndPrime is Script {
             hooks: IHooks(hook)
         });
 
-        vm.startBroadcast();
+        uint256 pk = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(pk);
         poolManager.initialize(key, SQRT_PRICE_1_TO_1);
         sender.setPoolKey(key, TICK_LOWER, TICK_UPPER);
         vm.stopBroadcast();

@@ -10,8 +10,9 @@ contract DeployGiftRecipient is Script {
         address callbackProxy = vm.envAddress("BASE_SEPOLIA_CALLBACK_PROXY");
         IERC20 usdc = IERC20(vm.envAddress("BASE_SEPOLIA_USDC"));
         uint256 fundingWei = vm.envOr("GIFT_RECIPIENT_FUNDING_WEI", uint256(0.05 ether));
+        uint256 pk = vm.envUint("PRIVATE_KEY");
 
-        vm.startBroadcast();
+        vm.startBroadcast(pk);
         recipient = new GiftRecipient{value: fundingWei}(callbackProxy, usdc);
         vm.stopBroadcast();
 

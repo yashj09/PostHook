@@ -6,7 +6,8 @@ import {MockUSDT} from "../src/MockUSDT.sol";
 
 contract DeployMockUSDT is Script {
     function run() external returns (MockUSDT token) {
-        vm.startBroadcast();
+        uint256 pk = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(pk);
         token = new MockUSDT();
         vm.stopBroadcast();
         console.log("MockUSDT deployed at:", address(token));
