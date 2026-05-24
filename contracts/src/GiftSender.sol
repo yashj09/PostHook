@@ -99,8 +99,23 @@ contract GiftSender is AbstractCallback {
     /// @notice One-time pool config. Approves Permit2 → PositionManager for
     /// both currencies so subsequent gift deposits don't need their own
     /// approval dance.
+    /// @dev Reverts if a pool is already set; use `resetPoolKey` (owner-only,
+    /// for testnet hot-fix scenarios) if you really need to swap pools.
     function setPoolKey(PoolKey calldata _poolKey, int24 _tickLower, int24 _tickUpper) external onlyOwner {
         if (Currency.unwrap(poolKey.currency0) != address(0)) revert PoolKeyAlreadySet();
+        _setPoolKey(_poolKey, _tickLower, _tickUpper);
+    }
+
+    /// @notice Owner-only escape hatch to point GiftSender at a new pool.
+    /// Only safe to call when no live gifts exist (would otherwise orphan the
+    /// LP NFT). Resets `lpTokenId` so the next deposit mints fresh.
+    function resetPoolKey(PoolKey calldata _poolKey, int24 _tickLower, int24 _tickUpper) external onlyOwner {
+        require(totalLiquidity == 0, "live gifts exist");
+        lpTokenId = 0;
+        _setPoolKey(_poolKey, _tickLower, _tickUpper);
+    }
+
+    function _setPoolKey(PoolKey calldata _poolKey, int24 _tickLower, int24 _tickUpper) internal {
         poolKey = _poolKey;
         tickLower = _tickLower;
         tickUpper = _tickUpper;

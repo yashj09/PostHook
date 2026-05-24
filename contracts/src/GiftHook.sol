@@ -10,25 +10,26 @@ import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {ModifyLiquidityParams, SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
 
 /// @title GiftHook
-/// @notice v4 hook attached to the gift-card stable pool. Enforces that the
-/// only liquidity provider is the GiftSender contract, and exposes per-pool
-/// swap-volume accounting used by the demo dashboard.
+/// @notice v4 hook attached to the gift-card stable pool. Restricts liquidity
+/// changes to those originating from Uniswap's canonical PositionManager (the
+/// `sender` arg in v4 hook callbacks reflects the entity calling PoolManager,
+/// which when GiftSender goes through PositionManager.modifyLiquidities is
+/// PositionManager itself). Exposes per-pool swap-volume telemetry.
 ///
-/// Yield accrues passively via the standard v4 fee mechanism on the
-/// position NFT held by GiftSender. Per-gift apportionment is computed at
-/// unwind time inside GiftSender (pro-rata to liquidity share), which keeps
-/// this hook minimal.
+/// Yield accrues passively via v4's standard fee mechanism on the position
+/// NFT held by GiftSender. Per-gift apportionment is computed at unwind time
+/// inside GiftSender (pro-rata to liquidity share).
 contract GiftHook is BaseHook {
     using PoolIdLibrary for PoolKey;
 
-    address public immutable giftSender;
+    address public immutable positionManager;
 
     mapping(PoolId => uint256) public totalSwapVolume;
 
-    error OnlyGiftSenderMayProvideLiquidity();
+    error OnlyPositionManagerMayProvideLiquidity();
 
-    constructor(IPoolManager _poolManager, address _giftSender) BaseHook(_poolManager) {
-        giftSender = _giftSender;
+    constructor(IPoolManager _poolManager, address _positionManager) BaseHook(_poolManager) {
+        positionManager = _positionManager;
     }
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
@@ -56,7 +57,7 @@ contract GiftHook is BaseHook {
         ModifyLiquidityParams calldata,
         bytes calldata
     ) internal view override returns (bytes4) {
-        if (sender != giftSender) revert OnlyGiftSenderMayProvideLiquidity();
+        if (sender != positionManager) revert OnlyPositionManagerMayProvideLiquidity();
         return BaseHook.beforeAddLiquidity.selector;
     }
 
@@ -66,7 +67,7 @@ contract GiftHook is BaseHook {
         ModifyLiquidityParams calldata,
         bytes calldata
     ) internal view override returns (bytes4) {
-        if (sender != giftSender) revert OnlyGiftSenderMayProvideLiquidity();
+        if (sender != positionManager) revert OnlyPositionManagerMayProvideLiquidity();
         return BaseHook.beforeRemoveLiquidity.selector;
     }
 
