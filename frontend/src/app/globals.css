@@ -1,26 +1,222 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Letterpress + postal palette */
+  --color-paper: #f4ecdc;
+  --color-paper-warm: #ede2c7;
+  --color-paper-deep: #e2d4b1;
+  --color-ink: #1b2a4e;
+  --color-ink-soft: #2a3b62;
+  --color-ink-muted: #6a7593;
+  --color-stamp: #7a1f2b;
+  --color-stamp-soft: #a23644;
+  --color-wax: #8b2538;
+  --color-brass: #b68e4f;
+  --color-brass-soft: #d3b075;
+  --color-rule: #c9b68e;
+  --color-foliage: #4a5d3a;
+
+  --font-display: var(--font-fraunces), "Fraunces", "Times New Roman", serif;
+  --font-body: var(--font-bricolage), "Bricolage Grotesque", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;
+
+  --shadow-paper: 0 1px 0 rgba(45, 30, 15, 0.06), 0 8px 24px rgba(45, 30, 15, 0.12);
+  --shadow-stamp: 0 1px 2px rgba(45, 30, 15, 0.18), 0 0 0 1px rgba(45, 30, 15, 0.08);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Subtle paper grain — multi-layered to feel hand-pressed, not synthetic */
+  background-image:
+    radial-gradient(rgba(45, 30, 15, 0.045) 1px, transparent 1px),
+    radial-gradient(rgba(45, 30, 15, 0.025) 1px, transparent 1.5px),
+    linear-gradient(180deg, rgba(45, 30, 15, 0.015) 0%, rgba(45, 30, 15, 0) 100%);
+  background-size:
+    3px 3px,
+    11px 11px,
+    100% 100%;
+  background-position:
+    0 0,
+    1px 2px,
+    0 0;
+}
+
+/* Tabular numerals for monetary readouts */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Fraunces with editorial display settings */
+.display {
+  font-family: var(--font-display);
+  font-feature-settings:
+    "ss01" 1,
+    "ss02" 1,
+    "case" 1;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "opsz" 144,
+    "SOFT" 50,
+    "WONK" 1;
+}
+
+/* Hand-pressed: gentle rotation jitter inherited via CSS variable */
+.jitter {
+  transform: rotate(var(--jitter, -1.4deg));
+}
+
+/* Perforation utility (top + bottom edges of an envelope/stamp) */
+.perf-y {
+  --perf-radius: 5px;
+  --perf-spacing: 14px;
+  -webkit-mask:
+    radial-gradient(circle var(--perf-radius) at var(--perf-radius) 50%, transparent 98%, #000 100%) repeat-x top
+      left / var(--perf-spacing) var(--perf-radius),
+    radial-gradient(circle var(--perf-radius) at var(--perf-radius) 50%, transparent 98%, #000 100%) repeat-x bottom
+      left / var(--perf-spacing) var(--perf-radius),
+    linear-gradient(#000, #000);
+  -webkit-mask-composite: source-over, source-over, source-over;
+  mask:
+    radial-gradient(circle var(--perf-radius) at var(--perf-radius) 50%, transparent 98%, #000 100%) repeat-x top
+      left / var(--perf-spacing) var(--perf-radius),
+    radial-gradient(circle var(--perf-radius) at var(--perf-radius) 50%, transparent 98%, #000 100%) repeat-x bottom
+      left / var(--perf-spacing) var(--perf-radius),
+    linear-gradient(#000, #000);
+}
+
+/* Hairline brass rule */
+.rule-brass {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-rule) 12%,
+    var(--color-rule) 88%,
+    transparent 100%
+  );
+}
+
+/* Stamp toothed edge using radial-gradient mask on every side */
+.stamp-edge {
+  --tooth: 4px;
+  --gap: 8px;
+  -webkit-mask:
+    radial-gradient(circle var(--tooth) at 50% 0, transparent 98%, #000 100%) repeat-x top left /
+      var(--gap) var(--tooth),
+    radial-gradient(circle var(--tooth) at 50% 100%, transparent 98%, #000 100%) repeat-x bottom left /
+      var(--gap) var(--tooth),
+    radial-gradient(circle var(--tooth) at 0 50%, transparent 98%, #000 100%) repeat-y left top /
+      var(--tooth) var(--gap),
+    radial-gradient(circle var(--tooth) at 100% 50%, transparent 98%, #000 100%) repeat-y right top /
+      var(--tooth) var(--gap),
+    linear-gradient(#000, #000);
+  mask:
+    radial-gradient(circle var(--tooth) at 50% 0, transparent 98%, #000 100%) repeat-x top left /
+      var(--gap) var(--tooth),
+    radial-gradient(circle var(--tooth) at 50% 100%, transparent 98%, #000 100%) repeat-x bottom left /
+      var(--gap) var(--tooth),
+    radial-gradient(circle var(--tooth) at 0 50%, transparent 98%, #000 100%) repeat-y left top /
+      var(--tooth) var(--gap),
+    radial-gradient(circle var(--tooth) at 100% 50%, transparent 98%, #000 100%) repeat-y right top /
+      var(--tooth) var(--gap),
+    linear-gradient(#000, #000);
+}
+
+/* Smooth wax-seal press */
+@keyframes seal-press {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(0.92);
+  }
+  60% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.seal-press {
+  animation: seal-press 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Page-load: stamp drop */
+@keyframes stamp-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px) rotate(0) scale(1.15);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(2px) rotate(var(--jitter, -1.4deg)) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(var(--jitter, -1.4deg)) scale(1);
+  }
+}
+.animate-stamp-drop {
+  animation: stamp-drop 400ms cubic-bezier(0.32, 0.94, 0.6, 1) both;
+  animation-delay: var(--stamp-delay, 0ms);
+}
+
+@keyframes paper-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-paper-rise {
+  animation: paper-rise 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--rise-delay, 0ms);
+}
+
+/* RainbowKit visual override toward our palette */
+[data-rk] {
+  --rk-colors-accentColor: var(--color-stamp) !important;
+  --rk-colors-accentColorForeground: var(--color-paper) !important;
+  --rk-fonts-body: var(--font-body) !important;
+  --rk-radii-modal: 4px !important;
+  --rk-radii-actionButton: 4px !important;
+  --rk-radii-connectButton: 4px !important;
+  --rk-radii-menuButton: 4px !important;
+}
+
+/* Selection */
+::selection {
+  background: var(--color-brass);
+  color: var(--color-paper);
+}
+
+/* Subtle scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-paper-warm);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-rule);
+  border: 2px solid var(--color-paper-warm);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brass);
 }
