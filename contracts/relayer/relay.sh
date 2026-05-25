@@ -33,11 +33,15 @@ if [ ! -f "$BASE_CURSOR_FILE" ]; then
   cast block-number --rpc-url "$BASE_SEPOLIA_RPC" > "$BASE_CURSOR_FILE"
 fi
 
+RELAY_LOG="${RELAY_LOG:-/tmp/posthook-relay.log}"
+exec > >(tee -a "$RELAY_LOG") 2>&1
+
 echo "Relayer started. Watching:"
 echo "  Unichain Sepolia GiftSender: $UNICHAIN_SEPOLIA_GIFT_SENDER"
 echo "  Base Sepolia GiftRecipient:  $BASE_SEPOLIA_GIFT_RECIPIENT"
 echo "  Cursor (Unichain): $(cat $UNI_CURSOR_FILE)"
 echo "  Cursor (Base):     $(cat $BASE_CURSOR_FILE)"
+echo "  Logging to:        $RELAY_LOG"
 echo
 
 # ----- handlers -----
