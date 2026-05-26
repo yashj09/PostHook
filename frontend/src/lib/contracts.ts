@@ -30,7 +30,7 @@ export const addresses = {
     ),
     giftSender: ENV(
       "NEXT_PUBLIC_UNICHAIN_SEPOLIA_GIFT_SENDER",
-      "0xe92de964B1579ce349154Dd66fcF0e9CE17c47bf",
+      "0x8638F77441A603c28734cB77627918A4F13Cb411",
     ),
     giftHook: ENV(
       "NEXT_PUBLIC_UNICHAIN_SEPOLIA_HOOK",
@@ -49,7 +49,7 @@ export const addresses = {
     chainId: baseSepolia.id,
     giftRecipient: ENV(
       "NEXT_PUBLIC_BASE_SEPOLIA_GIFT_RECIPIENT",
-      "0x0e36df3b90a2b4868ecd7a5974a16a5c1c5a2110",
+      "0x6C5E1FE9eDa67BE07f80582C1e4488ad416bF5C2",
     ),
     usdc: ENV(
       "NEXT_PUBLIC_BASE_SEPOLIA_USDC",

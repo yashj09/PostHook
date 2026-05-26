@@ -465,9 +465,15 @@
     "name": "GiftCancelled",
     "inputs": [
       {
+        "name": "discard",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
         "name": "giftId",
         "type": "bytes32",
-        "indexed": true,
+        "indexed": false,
         "internalType": "bytes32"
       }
     ],
@@ -478,16 +484,16 @@
     "name": "GiftDeposited",
     "inputs": [
       {
-        "name": "giftId",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      },
-      {
         "name": "sender",
         "type": "address",
         "indexed": false,
         "internalType": "address"
+      },
+      {
+        "name": "giftId",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
       },
       {
         "name": "commitment",
@@ -527,9 +533,15 @@
     "name": "GiftExpired",
     "inputs": [
       {
+        "name": "discard",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
         "name": "giftId",
         "type": "bytes32",
-        "indexed": true,
+        "indexed": false,
         "internalType": "bytes32"
       }
     ],
@@ -540,9 +552,15 @@
     "name": "GiftUnwound",
     "inputs": [
       {
+        "name": "discard",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
         "name": "giftId",
         "type": "bytes32",
-        "indexed": true,
+        "indexed": false,
         "internalType": "bytes32"
       },
       {

@@ -583,16 +583,22 @@ export const giftRecipientAbi = [
     anonymous: false,
     inputs: [
       {
+        name: 'discard',
+        internalType: 'address',
+        type: 'address',
+        indexed: false,
+      },
+      {
         name: 'giftId',
         internalType: 'bytes32',
         type: 'bytes32',
-        indexed: true,
+        indexed: false,
       },
       {
         name: 'claimer',
         internalType: 'address',
         type: 'address',
-        indexed: true,
+        indexed: false,
       },
     ],
     name: 'GiftClaimed',
@@ -602,16 +608,22 @@ export const giftRecipientAbi = [
     anonymous: false,
     inputs: [
       {
+        name: 'discard',
+        internalType: 'address',
+        type: 'address',
+        indexed: false,
+      },
+      {
         name: 'giftId',
         internalType: 'bytes32',
         type: 'bytes32',
-        indexed: true,
+        indexed: false,
       },
       {
         name: 'recipient',
         internalType: 'address',
         type: 'address',
-        indexed: true,
+        indexed: false,
       },
       {
         name: 'amount',
@@ -627,10 +639,16 @@ export const giftRecipientAbi = [
     anonymous: false,
     inputs: [
       {
+        name: 'discard',
+        internalType: 'address',
+        type: 'address',
+        indexed: false,
+      },
+      {
         name: 'giftId',
         internalType: 'bytes32',
         type: 'bytes32',
-        indexed: true,
+        indexed: false,
       },
       {
         name: 'commitment',
@@ -895,10 +913,16 @@ export const giftSenderAbi = [
     anonymous: false,
     inputs: [
       {
+        name: 'discard',
+        internalType: 'address',
+        type: 'address',
+        indexed: false,
+      },
+      {
         name: 'giftId',
         internalType: 'bytes32',
         type: 'bytes32',
-        indexed: true,
+        indexed: false,
       },
     ],
     name: 'GiftCancelled',
@@ -908,15 +932,15 @@ export const giftSenderAbi = [
     anonymous: false,
     inputs: [
       {
-        name: 'giftId',
-        internalType: 'bytes32',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
         name: 'sender',
         internalType: 'address',
         type: 'address',
+        indexed: false,
+      },
+      {
+        name: 'giftId',
+        internalType: 'bytes32',
+        type: 'bytes32',
         indexed: false,
       },
       {
@@ -957,10 +981,16 @@ export const giftSenderAbi = [
     anonymous: false,
     inputs: [
       {
+        name: 'discard',
+        internalType: 'address',
+        type: 'address',
+        indexed: false,
+      },
+      {
         name: 'giftId',
         internalType: 'bytes32',
         type: 'bytes32',
-        indexed: true,
+        indexed: false,
       },
     ],
     name: 'GiftExpired',
@@ -970,10 +1000,16 @@ export const giftSenderAbi = [
     anonymous: false,
     inputs: [
       {
+        name: 'discard',
+        internalType: 'address',
+        type: 'address',
+        indexed: false,
+      },
+      {
         name: 'giftId',
         internalType: 'bytes32',
         type: 'bytes32',
-        indexed: true,
+        indexed: false,
       },
       {
         name: 'recipient',

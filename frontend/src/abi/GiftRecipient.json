@@ -256,15 +256,21 @@
     "name": "GiftClaimed",
     "inputs": [
       {
+        "name": "discard",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
         "name": "giftId",
         "type": "bytes32",
-        "indexed": true,
+        "indexed": false,
         "internalType": "bytes32"
       },
       {
         "name": "claimer",
         "type": "address",
-        "indexed": true,
+        "indexed": false,
         "internalType": "address"
       }
     ],
@@ -275,15 +281,21 @@
     "name": "GiftDelivered",
     "inputs": [
       {
+        "name": "discard",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
         "name": "giftId",
         "type": "bytes32",
-        "indexed": true,
+        "indexed": false,
         "internalType": "bytes32"
       },
       {
         "name": "recipient",
         "type": "address",
-        "indexed": true,
+        "indexed": false,
         "internalType": "address"
       },
       {
@@ -300,9 +312,15 @@
     "name": "GiftMirrored",
     "inputs": [
       {
+        "name": "discard",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
         "name": "giftId",
         "type": "bytes32",
-        "indexed": true,
+        "indexed": false,
         "internalType": "bytes32"
       },
       {
