@@ -31,6 +31,9 @@ contract GiftReactive is AbstractReactive {
     address public immutable recipientContract;  // GiftRecipient on Base Sepolia
 
     uint64  public constant CALLBACK_GAS_LIMIT = 1_000_000;
+    /// @notice Sentinel constant — bumped each refactor so we can confirm
+    /// the on-chain bytecode is the same as our local source.
+    uint256 public constant VERSION = 6;
 
     constructor(
         uint256 _senderChainId,
@@ -63,13 +66,26 @@ contract GiftReactive is AbstractReactive {
     }
 
     function react(LogRecord calldata log) external vmOnly {
-        // GiftDeposited(bytes32 indexed giftId, address sender, bytes32 commitment,
+        // OBSERVED Reactive Lasna behavior: LogRecord.data is the on-chain
+        // log's data with the first 32 bytes lopped off. To compensate, we
+        // decode starting from what would be field #2 in our event. (Our
+        // events are designed so the first non-indexed field is a sacrificial
+        // discriminator that we don't need on the RSC side.)
+
+        // GiftDeposited(address discardSender, bytes32 giftId, bytes32 commitment,
         //               uint128 amount0, uint128 amount1, uint32 dstChainId, uint64 expiresAt)
-        // → mintGiftEntry on Base
         if (log.chain_id == senderChainId && log._contract == senderContract && log.topic_0 == depositedTopic) {
-            bytes32 giftId = bytes32(log.topic_1);
-            (/*address sender*/, bytes32 commitment, uint128 amount0, uint128 amount1, /*uint32 dstChainId*/, uint64 expiresAt)
-                = abi.decode(log.data, (address, bytes32, uint128, uint128, uint32, uint64));
+            (
+                address discardSender,
+                bytes32 giftId,
+                bytes32 commitment,
+                uint128 amount0,
+                uint128 amount1,
+                uint32 discardDstChainId,
+                uint64 expiresAt
+            ) = abi.decode(log.data, (address, bytes32, bytes32, uint128, uint128, uint32, uint64));
+            discardSender;
+            discardDstChainId;
             uint128 expectedAmount = amount0 + amount1;
             bytes memory payload = abi.encodeWithSignature(
                 "mintGiftEntry(bytes32,bytes32,uint128,uint64)",
@@ -79,24 +95,25 @@ contract GiftReactive is AbstractReactive {
             return;
         }
 
-        // GiftClaimed(bytes32 indexed giftId, address indexed claimer) → unwindGift on Unichain
+        // GiftClaimed(bytes32 giftId, address claimer)
+        // Reactive's view: data starts at `claimer`. Need a sacrificial first
+        // field on the GiftRecipient side too.
         if (log.chain_id == recipientChainId && log._contract == recipientContract && log.topic_0 == claimedTopic) {
-            bytes32 giftId = bytes32(log.topic_1);
-            address claimer = address(uint160(log.topic_2));
+            (/*address claimer*/, bytes32 giftId, address claimerActual) = abi.decode(log.data, (address, bytes32, address));
             bytes memory payload = abi.encodeWithSignature(
                 "unwindGift(bytes32,address)",
-                giftId, claimer
+                giftId, claimerActual
             );
             emit Callback(senderChainId, senderContract, CALLBACK_GAS_LIMIT, payload);
             return;
         }
 
-        // GiftUnwound(bytes32 indexed giftId, address recipient, uint128 principalReturned,
-        //             uint128 yieldReturned, uint32 dstChainId) → deliverGift on Base
+        // GiftUnwound(bytes32 giftId, address recipient, uint128 principalReturned,
+        //             uint128 yieldReturned, uint32 dstChainId)
         if (log.chain_id == senderChainId && log._contract == senderContract && log.topic_0 == unwoundTopic) {
-            bytes32 giftId = bytes32(log.topic_1);
-            (/*address recipient*/, uint128 principalReturned, uint128 yieldReturned, /*uint32 dstChainId*/)
-                = abi.decode(log.data, (address, uint128, uint128, uint32));
+            (/*address recipient*/, bytes32 giftId, address recipientActual, uint128 principalReturned, uint128 yieldReturned, /*uint32 dstChainId*/)
+                = abi.decode(log.data, (address, bytes32, address, uint128, uint128, uint32));
+            recipientActual; // silence unused
             uint128 totalAmount = principalReturned + yieldReturned;
             bytes memory payload = abi.encodeWithSignature(
                 "deliverGift(bytes32,uint128)",

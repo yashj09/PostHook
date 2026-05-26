@@ -55,22 +55,25 @@ contract GiftSender is AbstractCallback {
 
     address public owner;
 
-    /// @dev Only the giftId is indexed. Reactive Lasna RSCs were observed to
-    /// place the second-indexed arg into topic_1 (rather than the first), so
-    /// keeping a single indexed arg removes the ambiguity.
+    /// @dev Reactive Lasna's LogRecord.data drops the first 32 bytes of the
+    /// on-chain data. To survive the round-trip, we put `address sender` first
+    /// (as the sacrificial first 32-byte slot) and the actual cargo (giftId,
+    /// commitment, amounts, etc.) starts at the second field. The RSC's
+    /// `abi.decode` skips the first field entirely.
     event GiftDeposited(
-        bytes32 indexed giftId,
         address sender,
+        bytes32 giftId,
         bytes32 commitment,
         uint128 amount0,
         uint128 amount1,
         uint32  dstChainId,
         uint64  expiresAt
     );
-    event GiftCancelled(bytes32 indexed giftId);
-    event GiftExpired(bytes32 indexed giftId);
+    event GiftCancelled(address discard, bytes32 giftId);
+    event GiftExpired(address discard, bytes32 giftId);
     event GiftUnwound(
-        bytes32 indexed giftId,
+        address discard,
+        bytes32 giftId,
         address recipient,
         uint128 principalReturned,
         uint128 yieldReturned,
@@ -202,7 +205,7 @@ contract GiftSender is AbstractCallback {
         });
         allGiftIds.push(giftId);
 
-        emit GiftDeposited(giftId, msg.sender, commitment, amount0Provided, amount1Provided, dstChainId, expiresAt);
+        emit GiftDeposited(msg.sender, giftId, commitment, amount0Provided, amount1Provided, dstChainId, expiresAt);
     }
 
     /// @notice Sender cancels an unclaimed gift. Returns principal + accrued yield.
@@ -211,7 +214,7 @@ contract GiftSender is AbstractCallback {
         if (g.state != State.Deposited) revert InvalidGiftState();
         if (msg.sender != g.sender) revert NotOwner();
         g.state = State.Cancelled;
-        emit GiftCancelled(giftId);
+        emit GiftCancelled(msg.sender, giftId);
         _unwind(giftId, g.sender);
     }
 
@@ -221,7 +224,7 @@ contract GiftSender is AbstractCallback {
         if (g.state != State.Deposited) revert InvalidGiftState();
         if (block.timestamp < g.expiresAt) revert GiftNotExpired();
         g.state = State.Expired;
-        emit GiftExpired(giftId);
+        emit GiftExpired(msg.sender, giftId);
         _unwind(giftId, g.sender);
     }
 
@@ -288,7 +291,7 @@ contract GiftSender is AbstractCallback {
             g.state = State.Unwound;
         }
 
-        emit GiftUnwound(giftId, recipient, principalReturned, yieldReturned, g.dstChainId);
+        emit GiftUnwound(address(this), giftId, recipient, principalReturned, yieldReturned, g.dstChainId);
     }
 
     function giftCount() external view returns (uint256) {

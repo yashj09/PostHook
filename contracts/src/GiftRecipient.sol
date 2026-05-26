@@ -35,9 +35,13 @@ contract GiftRecipient is AbstractCallback {
     mapping(bytes32 => GiftEntry) public gifts;
     bytes32[] public allGiftIds;
 
-    event GiftMirrored(bytes32 indexed giftId, bytes32 commitment, uint128 expectedAmount, uint64 expiresAt);
-    event GiftClaimed(bytes32 indexed giftId, address indexed claimer);
-    event GiftDelivered(bytes32 indexed giftId, address indexed recipient, uint128 amount);
+    /// @dev Reactive Lasna's LogRecord.data drops the first 32 bytes of the
+    /// on-chain data. We put a sacrificial address as field 0 of every event
+    /// so the actual cargo (giftId, ...) starts where the RSC's abi.decode
+    /// expects.
+    event GiftMirrored(address discard, bytes32 giftId, bytes32 commitment, uint128 expectedAmount, uint64 expiresAt);
+    event GiftClaimed(address discard, bytes32 giftId, address claimer);
+    event GiftDelivered(address discard, bytes32 giftId, address recipient, uint128 amount);
 
     error UnknownGift();
     error InvalidGiftState();
@@ -94,7 +98,7 @@ contract GiftRecipient is AbstractCallback {
             state: State.Mirrored
         });
         allGiftIds.push(giftId);
-        emit GiftMirrored(giftId, commitment, expectedAmount, expiresAt);
+        emit GiftMirrored(address(this), giftId, commitment, expectedAmount, expiresAt);
     }
 
     /// @notice Recipient claims the gift by revealing the secret matching the commitment.
@@ -108,7 +112,7 @@ contract GiftRecipient is AbstractCallback {
 
         g.claimedBy = msg.sender;
         g.state = State.Claimed;
-        emit GiftClaimed(giftId, msg.sender);
+        emit GiftClaimed(msg.sender, giftId, msg.sender);
     }
 
     /// @notice Called by the RSC after Unichain side has unwound and (in v1)
@@ -133,7 +137,7 @@ contract GiftRecipient is AbstractCallback {
         if (g.state != State.Claimed) revert InvalidGiftState();
         g.state = State.Delivered;
         usdc.safeTransfer(g.claimedBy, amount);
-        emit GiftDelivered(giftId, g.claimedBy, amount);
+        emit GiftDelivered(address(this), giftId, g.claimedBy, amount);
     }
 
     function giftCount() external view returns (uint256) {
