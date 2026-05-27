@@ -32,6 +32,10 @@ type ApiState = {
     state: number;
     stateName: string;
   } | null;
+  yieldData: {
+    principalUsd: number;
+    accruedFeesUsd: number;
+  } | null;
 };
 
 function buildTimeline(state: ApiState | null): TimelineStep[] {
@@ -331,7 +335,7 @@ export default function ClaimPage() {
                     <span className="text-[9px] uppercase tracking-[0.3em] text-[var(--color-ink-muted)]">
                       Now worth
                     </span>
-                    <YieldTicker baseUsd={principalUsd} aprBps={580} />
+                    <YieldTicker baseUsd={principalUsd} liveAccruedUsd={state?.yieldData?.accruedFeesUsd ?? 0} />
                   </div>
                 ) : isDelivered ? (
                   <div

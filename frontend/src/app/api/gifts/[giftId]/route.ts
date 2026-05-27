@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { createPublicClient, http } from "viem";
+import { createPublicClient, http, encodeAbiParameters, keccak256 } from "viem";
 import { unichainSepolia, baseSepolia } from "@/lib/chains";
-import { addresses } from "@/lib/contracts";
-import { giftSenderAbi, giftRecipientAbi } from "@/generated/wagmi";
+import { addresses, giftPoolKey } from "@/lib/contracts";
+import { giftSenderAbi, giftRecipientAbi, giftHookAbi } from "@/generated/wagmi";
 
 const senderClient = createPublicClient({
   chain: unichainSepolia,
@@ -32,6 +32,32 @@ const recipientStateNames = [
   "Delivered",
 ] as const;
 
+const POOL_ID = keccak256(
+  encodeAbiParameters(
+    [
+      {
+        type: "tuple",
+        components: [
+          { name: "currency0", type: "address" },
+          { name: "currency1", type: "address" },
+          { name: "fee", type: "uint24" },
+          { name: "tickSpacing", type: "int24" },
+          { name: "hooks", type: "address" },
+        ],
+      },
+    ],
+    [
+      {
+        currency0: giftPoolKey.currency0,
+        currency1: giftPoolKey.currency1,
+        fee: giftPoolKey.fee,
+        tickSpacing: giftPoolKey.tickSpacing,
+        hooks: giftPoolKey.hooks,
+      },
+    ],
+  ),
+);
+
 export async function GET(
   _req: Request,
   ctx: { params: Promise<{ giftId: string }> },
@@ -41,6 +67,7 @@ export async function GET(
 
   let senderSide: Record<string, unknown> | null = null;
   let recipientSide: Record<string, unknown> | null = null;
+  let yieldData: Record<string, unknown> | null = null;
 
   try {
     const s = (await senderClient.readContract({
@@ -94,5 +121,52 @@ export async function GET(
     recipientSide = null;
   }
 
-  return NextResponse.json({ giftId: id, senderSide, recipientSide });
+  // Live-yield estimate: read totalLiquidity (GiftSender) + totalSwapVolume (GiftHook)
+  // and approximate accrued fees as `volume × feeBps × giftShare/totalLiquidity`.
+  if (senderSide) {
+    try {
+      const [totalLiquidity, totalSwapVolume] = await Promise.all([
+        senderClient.readContract({
+          address: addresses.unichainSepolia.giftSender!,
+          abi: giftSenderAbi,
+          functionName: "totalLiquidity",
+        }) as Promise<bigint>,
+        senderClient.readContract({
+          address: addresses.unichainSepolia.giftHook!,
+          abi: giftHookAbi,
+          functionName: "totalSwapVolume",
+          args: [POOL_ID],
+        }) as Promise<bigint>,
+      ]);
+
+      const giftLiq = BigInt((senderSide.liquidityShare as string) ?? "0");
+      const principalRaw =
+        BigInt((senderSide.amount0Provided as string) ?? "0") +
+        BigInt((senderSide.amount1Provided as string) ?? "0");
+
+      const feeBps = giftPoolKey.fee; // 500 = 0.05% expressed as *1e6 of notional
+      const totalFeesRaw =
+        totalLiquidity > 0n
+          ? (totalSwapVolume * BigInt(feeBps)) / 1_000_000n
+          : 0n;
+      const giftFeesRaw =
+        totalLiquidity > 0n ? (totalFeesRaw * giftLiq) / totalLiquidity : 0n;
+
+      yieldData = {
+        totalLiquidity: totalLiquidity.toString(),
+        totalSwapVolume: totalSwapVolume.toString(),
+        feeBps,
+        principalRaw: principalRaw.toString(),
+        accruedFeesRaw: giftFeesRaw.toString(),
+        // Convenience fields in human dollars (USDC = 6dp, the lower-decimals
+        // stable; both stables are 6dp here).
+        principalUsd: Number(principalRaw) / 1e6,
+        accruedFeesUsd: Number(giftFeesRaw) / 1e6,
+      };
+    } catch {
+      yieldData = null;
+    }
+  }
+
+  return NextResponse.json({ giftId: id, senderSide, recipientSide, yieldData });
 }

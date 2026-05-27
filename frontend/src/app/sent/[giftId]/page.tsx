@@ -30,6 +30,15 @@ type GiftState = {
     state: number;
     stateName: string;
   } | null;
+  yieldData: {
+    totalLiquidity: string;
+    totalSwapVolume: string;
+    feeBps: number;
+    principalRaw: string;
+    accruedFeesRaw: string;
+    principalUsd: number;
+    accruedFeesUsd: number;
+  } | null;
 };
 
 function buildTimeline(state: GiftState | null): TimelineStep[] {
@@ -107,11 +116,14 @@ export default function SentPage() {
   }, [giftId]);
 
   const principalUsd = useMemo(() => {
+    if (state?.yieldData?.principalUsd !== undefined) return state.yieldData.principalUsd;
     const a0 = state?.senderSide?.amount0Provided;
     const a1 = state?.senderSide?.amount1Provided;
     if (!a0 || !a1) return 0;
     return (Number(a0) + Number(a1)) / 1e6;
   }, [state]);
+
+  const accruedUsd = state?.yieldData?.accruedFeesUsd ?? 0;
 
   const claimUrl = useMemo(
     () =>
@@ -276,7 +288,7 @@ It'll keep growing until you do. — Posthook`,
                   <span className="text-[9px] uppercase tracking-[0.3em] text-[var(--color-ink-muted)]">
                     Now worth
                   </span>
-                  <YieldTicker baseUsd={principalUsd} aprBps={580} />
+                  <YieldTicker baseUsd={principalUsd} liveAccruedUsd={accruedUsd} />
                 </div>
               ) : null
             }

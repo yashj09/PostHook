@@ -71,22 +71,25 @@ contract SwapNoise is IUnlockCallback {
             ""
         );
 
-        // Settle: pay positive deltas (we owe), take negative deltas (PM owes us).
+        // Settle: pay negative deltas first (we owe), then take positive ones (PM owes us).
+        // For an exact-input swap, exactly one side is negative (input) and one positive (output).
         int128 amt0 = delta.amount0();
         int128 amt1 = delta.amount1();
 
         if (amt0 < 0) {
-            // we owe token0
+            poolManager.sync(poolKey.currency0);
             IERC20(Currency.unwrap(poolKey.currency0)).safeTransfer(address(poolManager), uint256(uint128(-amt0)));
             poolManager.settle();
-        } else if (amt0 > 0) {
-            poolManager.take(poolKey.currency0, address(this), uint128(amt0));
         }
-
         if (amt1 < 0) {
+            poolManager.sync(poolKey.currency1);
             IERC20(Currency.unwrap(poolKey.currency1)).safeTransfer(address(poolManager), uint256(uint128(-amt1)));
             poolManager.settle();
-        } else if (amt1 > 0) {
+        }
+        if (amt0 > 0) {
+            poolManager.take(poolKey.currency0, address(this), uint128(amt0));
+        }
+        if (amt1 > 0) {
             poolManager.take(poolKey.currency1, address(this), uint128(amt1));
         }
 
