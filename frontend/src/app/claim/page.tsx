@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -20,16 +19,6 @@ export default function ClaimIndexPage() {
 
   return (
     <main className="relative flex-1 w-full overflow-hidden">
-      <div className="mx-auto w-full max-w-[1240px] px-8 pt-12">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.3em] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-          style={{ fontFamily: "var(--font-body)" }}
-        >
-          <span>←</span> Back to lobby
-        </Link>
-      </div>
-
       <section
         className="mx-auto w-full max-w-[760px] px-8 pt-12 pb-24 animate-paper-rise"
         style={{ "--rise-delay": "60ms" } as React.CSSProperties}

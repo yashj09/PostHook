@@ -1,21 +1,10 @@
-import Link from "next/link";
 import { RelayLedger } from "@/components/RelayLedger";
 
 export default function SortingRoomPage() {
   return (
     <main className="relative flex-1 w-full overflow-hidden">
-      <div className="mx-auto w-full max-w-[1240px] px-8 pt-12">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.3em] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-          style={{ fontFamily: "var(--font-body)" }}
-        >
-          <span>←</span> Back to lobby
-        </Link>
-      </div>
-
       <section
-        className="mx-auto w-full max-w-[1240px] px-8 pt-8 pb-16 animate-paper-rise"
+        className="mx-auto w-full max-w-[1240px] px-8 pt-12 pb-16 animate-paper-rise"
         style={{ "--rise-delay": "60ms" } as React.CSSProperties}
       >
         <div

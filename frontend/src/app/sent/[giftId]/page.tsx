@@ -149,17 +149,7 @@ It'll keep growing until you do. — Posthook`,
 
   return (
     <main className="relative flex-1 w-full overflow-hidden">
-      <div className="mx-auto w-full max-w-[1240px] px-8 pt-12">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.3em] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-          style={{ fontFamily: "var(--font-body)" }}
-        >
-          <span>←</span> Back to lobby
-        </Link>
-      </div>
-
-      <section className="mx-auto w-full max-w-[1240px] px-8 pt-8 pb-24 grid grid-cols-12 gap-12">
+      <section className="mx-auto w-full max-w-[1240px] px-8 pt-12 pb-24 grid grid-cols-12 gap-12">
         {/* Left — receipt header + share + timeline */}
         <div className="col-span-12 lg:col-span-7 animate-paper-rise" style={{ "--rise-delay": "60ms" } as React.CSSProperties}>
           <div className="text-[10px] uppercase tracking-[0.4em] text-[var(--color-stamp)] font-semibold mb-3" style={{ fontFamily: "var(--font-body)" }}>
