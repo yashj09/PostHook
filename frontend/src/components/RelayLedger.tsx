@@ -11,13 +11,19 @@ type Entry = {
 
 function classifyLine(line: string): Entry["kind"] {
   if (line.startsWith("[deposit")) return "deposit" as const;
+  if (line.startsWith("[mirror")) return "status" as const;
   if (line.startsWith("[claim")) return "claim" as const;
   if (line.startsWith("[unwound")) return "unwind" as const;
+  if (line.startsWith("[deliver")) return "deliver" as const;
   if (line.startsWith("Relayer started")) return "header" as const;
   if (line.startsWith("status ")) return "status" as const;
   if (line.startsWith("transactionHash")) return "tx" as const;
   return "info" as const;
 }
+
+// "rpc" on the deployed app (reconstruct the ledger from on-chain events);
+// "log" (default) locally (tail the relayer log over SSE).
+const MODE = process.env.NEXT_PUBLIC_SORTINGROOM_MODE === "rpc" ? "rpc" : "log";
 
 const accent: Record<Entry["kind"], string> = {
   header: "var(--color-stamp)",
@@ -36,7 +42,9 @@ export function RelayLedger() {
   const [connected, setConnected] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // LOCAL "log" mode: tail the relayer log via SSE (unchanged behaviour).
   useEffect(() => {
+    if (MODE !== "log") return;
     const es = new EventSource("/api/relayer-stream");
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);
@@ -64,6 +72,45 @@ export function RelayLedger() {
       }
     };
     return () => es.close();
+  }, []);
+
+  // DEPLOYED "rpc" mode: poll on-chain events, dedup by id, feed the same ledger.
+  useEffect(() => {
+    if (MODE !== "rpc") return;
+    const seen = new Set<string>();
+    let stop = false;
+    const poll = async () => {
+      try {
+        const { lines } = await fetch("/api/relayer-events").then((r) => r.json());
+        setConnected(true);
+        if (!Array.isArray(lines)) return;
+        const fresh = (lines as { id: string; line: string }[]).filter(
+          (l) => !seen.has(l.id),
+        );
+        if (fresh.length === 0) return;
+        fresh.forEach((l) => seen.add(l.id));
+        setEntries((prev) =>
+          [
+            ...prev,
+            ...fresh.map((l) => ({
+              ts: Date.now(),
+              kind: classifyLine(l.line),
+              text: l.line,
+            })),
+          ].slice(-300),
+        );
+      } catch {
+        setConnected(false);
+      }
+    };
+    void poll();
+    const id = setInterval(() => {
+      if (!stop) void poll();
+    }, 5000);
+    return () => {
+      stop = true;
+      clearInterval(id);
+    };
   }, []);
 
   // auto-scroll
@@ -94,7 +141,7 @@ export function RelayLedger() {
           className="text-[10px] uppercase tracking-[0.28em] text-[var(--color-ink-muted)]"
           style={{ fontFamily: "var(--font-mono)" }}
         >
-          /api/relayer-stream
+          {MODE === "rpc" ? "/api/relayer-events" : "/api/relayer-stream"}
         </span>
       </header>
       <div
@@ -107,7 +154,9 @@ export function RelayLedger() {
             className="text-[var(--color-ink-muted)]"
             style={{ fontFamily: "var(--font-mono)" }}
           >
-            Waiting for the postman… run `bash contracts/relayer/relay.sh` from the contracts folder.
+            {MODE === "rpc"
+              ? "Reading the wire… recent cross-chain events will appear here."
+              : "Waiting for the postman… run `bash contracts/relayer/relay.sh` from the contracts folder."}
           </div>
         )}
         {entries.map((e, i) => (

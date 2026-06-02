@@ -5,7 +5,11 @@ export const unichainSepolia: Chain = {
   name: "Unichain Sepolia",
   nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://sepolia.unichain.org"] },
+    default: {
+      http: [
+        process.env.NEXT_PUBLIC_UNICHAIN_SEPOLIA_RPC ?? "https://sepolia.unichain.org",
+      ],
+    },
   },
   blockExplorers: {
     default: { name: "Uniscan", url: "https://sepolia.uniscan.xyz" },
@@ -18,7 +22,11 @@ export const baseSepolia: Chain = {
   name: "Base Sepolia",
   nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://sepolia.base.org"] },
+    default: {
+      http: [
+        process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC ?? "https://sepolia.base.org",
+      ],
+    },
   },
   blockExplorers: {
     default: { name: "Basescan", url: "https://sepolia.basescan.org" },

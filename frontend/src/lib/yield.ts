@@ -1,7 +1,7 @@
 "use client";
 
 import { encodeAbiParameters, keccak256 } from "viem";
-import { addresses, giftPoolKey } from "@/lib/contracts";
+import { addresses, giftPoolKey, HOOK_TRANSIT_FEE } from "@/lib/contracts";
 
 /**
  * Compute the v4 PoolId from a PoolKey: keccak256(abi.encode(PoolKey)).
@@ -62,5 +62,8 @@ export function estimateGiftFeesUsdc(opts: {
   return Number(giftShareRaw) / 1e6;
 }
 
-export const POOL_FEE_BPS = giftPoolKey.fee; // 500 = 0.05%
+// The pool is dynamic-fee, so giftPoolKey.fee is the sentinel flag (0x800000),
+// NOT a realized rate. The realized rate for an in-transit gift is the hook's
+// premium tier (TRANSIT_FEE, hundredths of a bip). See GiftHook.sol.
+export const POOL_FEE_BPS = HOOK_TRANSIT_FEE; // 3000 = 0.30%
 export { addresses };

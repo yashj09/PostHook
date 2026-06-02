@@ -2,6 +2,7 @@ import Link from "next/link";
 import { GiftCard } from "@/components/GiftCard";
 import { ChainBadge } from "@/components/ChainBadge";
 import { YieldTicker } from "@/components/YieldTicker";
+import { demoGift } from "@/lib/demo";
 
 export default function Home() {
   return (
@@ -70,6 +71,19 @@ export default function Home() {
               · or claim one
             </Link>
           </div>
+
+          {demoGift ? (
+            <div className="mt-5">
+              <Link
+                href={`/sent/${demoGift.giftId}?secret=${encodeURIComponent(demoGift.secret)}`}
+                className="inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.28em] text-[var(--color-stamp)] hover:text-[var(--color-wax)] transition-colors"
+                style={{ fontFamily: "var(--font-body)" }}
+              >
+                Try the demo — watch a live gift grow
+                <span aria-hidden>→</span>
+              </Link>
+            </div>
+          ) : null}
 
           <div className="rule-brass mt-14 mb-6" />
 

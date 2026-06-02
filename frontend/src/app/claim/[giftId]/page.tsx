@@ -1,8 +1,8 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { motion } from "motion/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   useAccount,
   useChainId,
@@ -128,6 +128,20 @@ export default function ClaimPage() {
 
   const isDelivered = recipState === "Delivered";
   const isClaimed = recipState === "Claimed" || isDelivered;
+
+  // One-shot celebration: fire the "Delivered" stamp slam exactly once, when the
+  // recipient state transitions into Delivered — not on every 6s poll re-render.
+  const reduceMotion = useReducedMotion();
+  const [celebrate, setCelebrate] = useState(false);
+  const deliveredSeenRef = useRef(false);
+  useEffect(() => {
+    if (isDelivered && !deliveredSeenRef.current) {
+      deliveredSeenRef.current = true;
+      setCelebrate(true);
+      const t = setTimeout(() => setCelebrate(false), 2600);
+      return () => clearTimeout(t);
+    }
+  }, [isDelivered]);
 
   return (
     <main className="relative flex-1 w-full overflow-hidden">
@@ -292,7 +306,10 @@ export default function ClaimPage() {
         </div>
 
         {/* Right — gift card with envelope animation */}
-        <div className="col-span-12 lg:col-span-5 flex flex-col items-end pt-12 lg:pt-20">
+        <div className="col-span-12 lg:col-span-5 flex flex-col items-end pt-12 lg:pt-20 relative">
+          <AnimatePresence>
+            {celebrate ? <DeliveredBurst reduceMotion={!!reduceMotion} /> : null}
+          </AnimatePresence>
           <motion.div
             animate={
               isDelivered
@@ -350,5 +367,78 @@ export default function ClaimPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+/**
+ * The "Delivered" celebration: a rubber-stamp slams down over the gift card with
+ * a satisfying overshoot, a brass ring pulses out behind it, and a few torn
+ * paper scraps scatter in the postal palette. Fires once on the Delivered
+ * transition; collapses to a static stamp (no motion) under reduced-motion.
+ */
+function DeliveredBurst({ reduceMotion }: { reduceMotion: boolean }) {
+  // Overshoot easing borrowed from the WaxSeal press, for the hand-pressed feel.
+  const press = [0.34, 1.56, 0.64, 1] as const;
+  const scraps = [
+    { x: -120, y: 40, rot: -38, color: "var(--color-stamp)" },
+    { x: 110, y: 20, rot: 28, color: "var(--color-brass)" },
+    { x: -80, y: 130, rot: 18, color: "var(--color-foliage)" },
+    { x: 90, y: 150, rot: -22, color: "var(--color-paper-deep)" },
+    { x: -10, y: -30, rot: 12, color: "var(--color-brass-soft)" },
+    { x: 40, y: 110, rot: -10, color: "var(--color-stamp-soft)" },
+  ];
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+      {/* Pulsing brass ring */}
+      {!reduceMotion ? (
+        <motion.div
+          className="absolute rounded-full"
+          style={{ width: 180, height: 180, border: "2px solid var(--color-brass)" }}
+          initial={{ scale: 0.5, opacity: 0.6 }}
+          animate={{ scale: 2.2, opacity: 0 }}
+          transition={{ duration: 1.1, ease: "easeOut" }}
+        />
+      ) : null}
+
+      {/* Paper scraps */}
+      {!reduceMotion
+        ? scraps.map((s, i) => (
+            <motion.span
+              key={i}
+              className="absolute block"
+              style={{ width: 10, height: 14, background: s.color, borderRadius: 1 }}
+              initial={{ x: 0, y: 0, rotate: 0, opacity: 0 }}
+              animate={{ x: s.x, y: s.y, rotate: s.rot, opacity: [0, 1, 1, 0] }}
+              transition={{ duration: 1.4, ease: "easeOut", delay: 0.08 + i * 0.03 }}
+            />
+          ))
+        : null}
+
+      {/* The DELIVERED rubber stamp */}
+      <motion.div
+        initial={reduceMotion ? { opacity: 1 } : { scale: 1.8, opacity: 0, rotate: -18 }}
+        animate={reduceMotion ? { opacity: 1 } : { scale: [1.8, 0.92, 1.04, 1], opacity: 1, rotate: -9 }}
+        transition={reduceMotion ? { duration: 0 } : { duration: 0.5, ease: press }}
+        className="px-5 py-2 border-[3px]"
+        style={{
+          borderColor: "var(--color-stamp)",
+          color: "var(--color-stamp)",
+          background: "color-mix(in srgb, var(--color-paper) 86%, transparent)",
+          boxShadow: "var(--shadow-stamp)",
+        }}
+      >
+        <span
+          className="display uppercase"
+          style={{
+            fontSize: 26,
+            letterSpacing: "0.12em",
+            fontVariationSettings: "'opsz' 144, 'wght' 700, 'WONK' 1",
+          }}
+        >
+          Delivered
+        </span>
+      </motion.div>
+    </div>
   );
 }
