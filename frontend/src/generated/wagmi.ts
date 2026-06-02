@@ -67,8 +67,30 @@ export const giftHookAbi = [
         type: 'address',
       },
       { name: '_positionManager', internalType: 'address', type: 'address' },
+      { name: '_giftSender', internalType: 'address', type: 'address' },
     ],
     stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'BASE_FEE',
+    outputs: [{ name: '', internalType: 'uint24', type: 'uint24' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'TRANSIT_FEE',
+    outputs: [{ name: '', internalType: 'uint24', type: 'uint24' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'VERSION',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
   },
   {
     type: 'function',
@@ -425,6 +447,13 @@ export const giftHookAbi = [
   {
     type: 'function',
     inputs: [],
+    name: 'giftSender',
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
     name: 'poolManager',
     outputs: [
       { name: '', internalType: 'contract IPoolManager', type: 'address' },
@@ -446,6 +475,7 @@ export const giftHookAbi = [
     stateMutability: 'view',
   },
   { type: 'error', inputs: [], name: 'HookNotImplemented' },
+  { type: 'error', inputs: [], name: 'NotDynamicFee' },
   { type: 'error', inputs: [], name: 'NotPoolManager' },
   { type: 'error', inputs: [], name: 'OnlyPositionManagerMayProvideLiquidity' },
 ] as const
@@ -1305,6 +1335,30 @@ export const useReadGiftHook = /*#__PURE__*/ createUseReadContract({
 })
 
 /**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link giftHookAbi}__ and `functionName` set to `"BASE_FEE"`
+ */
+export const useReadGiftHookBaseFee = /*#__PURE__*/ createUseReadContract({
+  abi: giftHookAbi,
+  functionName: 'BASE_FEE',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link giftHookAbi}__ and `functionName` set to `"TRANSIT_FEE"`
+ */
+export const useReadGiftHookTransitFee = /*#__PURE__*/ createUseReadContract({
+  abi: giftHookAbi,
+  functionName: 'TRANSIT_FEE',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link giftHookAbi}__ and `functionName` set to `"VERSION"`
+ */
+export const useReadGiftHookVersion = /*#__PURE__*/ createUseReadContract({
+  abi: giftHookAbi,
+  functionName: 'VERSION',
+})
+
+/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link giftHookAbi}__ and `functionName` set to `"getHookPermissions"`
  */
 export const useReadGiftHookGetHookPermissions =
@@ -1312,6 +1366,14 @@ export const useReadGiftHookGetHookPermissions =
     abi: giftHookAbi,
     functionName: 'getHookPermissions',
   })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link giftHookAbi}__ and `functionName` set to `"giftSender"`
+ */
+export const useReadGiftHookGiftSender = /*#__PURE__*/ createUseReadContract({
+  abi: giftHookAbi,
+  functionName: 'giftSender',
+})
 
 /**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link giftHookAbi}__ and `functionName` set to `"poolManager"`

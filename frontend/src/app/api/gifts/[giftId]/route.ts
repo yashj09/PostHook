@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createPublicClient, http, encodeAbiParameters, keccak256 } from "viem";
 import { unichainSepolia, baseSepolia } from "@/lib/chains";
-import { addresses, giftPoolKey } from "@/lib/contracts";
+import { addresses, giftPoolKey, HOOK_TRANSIT_FEE } from "@/lib/contracts";
 import { giftSenderAbi, giftRecipientAbi, giftHookAbi } from "@/generated/wagmi";
 
 const senderClient = createPublicClient({
@@ -144,7 +144,12 @@ export async function GET(
         BigInt((senderSide.amount0Provided as string) ?? "0") +
         BigInt((senderSide.amount1Provided as string) ?? "0");
 
-      const feeBps = giftPoolKey.fee; // 500 = 0.05% expressed as *1e6 of notional
+      // The pool is dynamic-fee: giftPoolKey.fee is the sentinel flag, NOT a
+      // realized rate. Since the gift is the sole LP and the hook charges the
+      // premium TRANSIT_FEE on every swap while a gift is in transit, the
+      // honest realized rate for an in-transit gift is HOOK_TRANSIT_FEE
+      // (hundredths of a bip, i.e. 3000 = 0.30%).
+      const feeBps = HOOK_TRANSIT_FEE;
       const totalFeesRaw =
         totalLiquidity > 0n
           ? (totalSwapVolume * BigInt(feeBps)) / 1_000_000n
