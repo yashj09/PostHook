@@ -6,6 +6,7 @@ import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import {LPFeeLibrary} from "@uniswap/v4-core/src/libraries/LPFeeLibrary.sol";
 import {GiftSender} from "../src/GiftSender.sol";
 
 /// @notice Step 5 of testnet bringup. Initializes the v4 USDC/MockUSDT pool
@@ -21,11 +22,13 @@ import {GiftSender} from "../src/GiftSender.sol";
 /// Notes:
 /// - Stable pair → starting price = 1.0, sqrtPriceX96 = 2**96.
 /// - Tick spacing = 10 is standard for fee = 100 (0.01%); 60 for 3000; etc.
-///   We use feeTier = 500 → tickSpacing = 10 for tight stable LP.
+///   We keep tickSpacing = 10 for tight stable LP.
 /// - Range chosen [-100, 100] gives ~1% price band around peg.
+/// - The pool is a DYNAMIC-FEE pool: its `fee` is the sentinel DYNAMIC_FEE_FLAG,
+///   and GiftHook.beforeSwap supplies the realized fee per swap (premium while a
+///   gift is in transit, baseline otherwise). See GiftHook for the mechanism.
 contract InitPoolAndPrime is Script {
     uint160 constant SQRT_PRICE_1_TO_1 = 79228162514264337593543950336; // 2**96
-    uint24  constant FEE_TIER = 500;       // 0.05%
     int24   constant TICK_SPACING = 10;
     int24   constant TICK_LOWER = -100;
     int24   constant TICK_UPPER = 100;
@@ -42,7 +45,7 @@ contract InitPoolAndPrime is Script {
         PoolKey memory key = PoolKey({
             currency0: Currency.wrap(c0),
             currency1: Currency.wrap(c1),
-            fee: FEE_TIER,
+            fee: LPFeeLibrary.DYNAMIC_FEE_FLAG,
             tickSpacing: TICK_SPACING,
             hooks: IHooks(hook)
         });

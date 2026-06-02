@@ -6,6 +6,7 @@ import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import {LPFeeLibrary} from "@uniswap/v4-core/src/libraries/LPFeeLibrary.sol";
 import {SwapNoise} from "../src/SwapNoise.sol";
 
 contract DeploySwapNoise is Script {
@@ -20,7 +21,7 @@ contract DeploySwapNoise is Script {
         PoolKey memory key = PoolKey({
             currency0: Currency.wrap(c0),
             currency1: Currency.wrap(c1),
-            fee: 500,
+            fee: LPFeeLibrary.DYNAMIC_FEE_FLAG, // must match the pool's PoolKey
             tickSpacing: 10,
             hooks: IHooks(hook)
         });

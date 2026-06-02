@@ -30,11 +30,11 @@ export const addresses = {
     ),
     giftSender: ENV(
       "NEXT_PUBLIC_UNICHAIN_SEPOLIA_GIFT_SENDER",
-      "0x8638F77441A603c28734cB77627918A4F13Cb411",
+      "0xe51ccEb811b78b0d4d4592fF82422680d0959EaD",
     ),
     giftHook: ENV(
       "NEXT_PUBLIC_UNICHAIN_SEPOLIA_HOOK",
-      "0x80327218722e7f98d9D6bC5f46693d3d98194A40",
+      "0xdBaE3F68d81580eF851aF7d7EA9d26C8EE2a5ac0",
     ),
     usdc: ENV(
       "NEXT_PUBLIC_UNICHAIN_SEPOLIA_USDC",
@@ -59,7 +59,22 @@ export const addresses = {
 } as const;
 
 /**
+ * v4's dynamic-fee sentinel (LPFeeLibrary.DYNAMIC_FEE_FLAG = 0x800000). The
+ * gift pool is a dynamic-fee pool: GiftHook sets the realized fee per swap.
+ */
+export const DYNAMIC_FEE_FLAG = 0x800000;
+
+/**
+ * GiftHook fee tiers (hundredths of a bip). The hook charges TRANSIT_FEE while
+ * a gift is in transit (GiftSender.totalLiquidity > 0) and BASE_FEE otherwise.
+ * Mirrors the constants in contracts/src/GiftHook.sol — keep in sync.
+ */
+export const HOOK_BASE_FEE = 500; // 0.05%
+export const HOOK_TRANSIT_FEE = 3000; // 0.30%
+
+/**
  * The shared pool key used for gift LP positions. currency0 < currency1.
+ * `fee` is the dynamic-fee sentinel so the TS-computed PoolId matches on-chain.
  */
 export const giftPoolKey = (() => {
   const usdc = addresses.unichainSepolia.usdc!.toLowerCase();
@@ -71,7 +86,7 @@ export const giftPoolKey = (() => {
   return {
     currency0: c0,
     currency1: c1,
-    fee: 500, // 0.05%
+    fee: DYNAMIC_FEE_FLAG,
     tickSpacing: 10,
     hooks: addresses.unichainSepolia.giftHook!,
     tickLower: -100,

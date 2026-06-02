@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ChainBadge } from "@/components/ChainBadge";
 import { Timeline } from "@/components/Timeline";
-import { addresses, giftPoolKey } from "@/lib/contracts";
+import { addresses, giftPoolKey, HOOK_BASE_FEE, HOOK_TRANSIT_FEE } from "@/lib/contracts";
 import { unichainSepolia, baseSepolia } from "@/lib/chains";
 
 export const metadata: Metadata = {
@@ -76,8 +76,11 @@ export default function AboutPage() {
         >
           Posthook is a DeFi gift card. A sender deposits two stables into a
           Uniswap&nbsp;v4 hook&rsquo;d liquidity position on Unichain Sepolia.
-          While the gift sits unclaimed, the position earns real swap-fee yield —
-          the voucher grows in transit. The recipient claims it on a{" "}
+          While the gift sits unclaimed, the hook charges swappers a{" "}
+          <em className="not-italic font-semibold text-[var(--color-ink)]">premium fee</em>{" "}
+          that flows straight to the waiting voucher — so the gift grows in
+          transit <em className="not-italic font-semibold text-[var(--color-ink)]">because</em>{" "}
+          the hook works on its behalf. The recipient claims it on a{" "}
           <em className="not-italic font-semibold text-[var(--color-ink)]">different chain</em>{" "}
           (Base Sepolia) by revealing a four-word secret. Reactive Smart
           Contracts watch for the claim and dispatch the unwind back on Unichain.
@@ -148,6 +151,66 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* How the hook earns — the IL/Yield mechanism */}
+      <section
+        className="mx-auto w-full max-w-[1240px] px-8 pt-10 pb-4 animate-paper-rise"
+        style={{ "--rise-delay": "200ms" } as React.CSSProperties}
+      >
+        <div className="rule-brass mb-10" />
+        <div className="grid grid-cols-12 gap-x-8 gap-y-6">
+          <div className="col-span-12 md:col-span-3">
+            <div
+              className="text-[10px] uppercase tracking-[0.4em] text-[var(--color-stamp)] font-semibold"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              The hook
+            </div>
+            <h2
+              className="display mt-3 text-[var(--color-ink)] leading-tight"
+              style={{ fontSize: 30, fontVariationSettings: "'opsz' 144, 'wght' 460" }}
+            >
+              A fee that knows the mail&rsquo;s in transit.
+            </h2>
+          </div>
+
+          <div className="col-span-12 md:col-span-9 flex flex-col gap-4">
+            <p
+              className="text-[15px] leading-[1.65] text-[var(--color-ink-soft)]"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              The gift pool is a Uniswap&nbsp;v4{" "}
+              <em className="not-italic font-semibold text-[var(--color-ink)]">dynamic-fee</em>{" "}
+              pool, and <code>GiftHook</code> sets the fee on every swap. While at
+              least one gift is unclaimed (the hook reads{" "}
+              <code>GiftSender.totalLiquidity&nbsp;&gt;&nbsp;0</code>), it overrides
+              the swap fee to a premium tier of{" "}
+              <strong className="text-[var(--color-ink)]">{(HOOK_TRANSIT_FEE / 10_000).toFixed(2)}%</strong>.
+              Once every gift is claimed it falls back to a baseline{" "}
+              <strong className="text-[var(--color-ink)]">{(HOOK_BASE_FEE / 10_000).toFixed(2)}%</strong>.
+            </p>
+            <p
+              className="text-[15px] leading-[1.65] text-[var(--color-ink-soft)]"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              Because each gift position is the pool&rsquo;s{" "}
+              <em className="not-italic font-semibold text-[var(--color-ink)]">sole</em>{" "}
+              liquidity, that premium accrues natively to the gift — no skimming,
+              no side pot. A gift demonstrably out-earns an ordinary LP{" "}
+              <em className="not-italic font-semibold text-[var(--color-ink)]">because the
+              hook charges more while the gift is travelling</em>. That&rsquo;s the
+              &ldquo;grows in the post&rdquo; line, produced by the hook itself —
+              not a passive side effect of vanilla swap fees.
+            </p>
+            <div
+              className="text-[12px] text-[var(--color-ink-muted)] border-l-2 border-[var(--color-rule)] pl-4"
+              style={{ fontFamily: "var(--font-mono)" }}
+            >
+              beforeSwap → totalLiquidity &gt; 0 ? {HOOK_TRANSIT_FEE} : {HOOK_BASE_FEE} (hundredths of a bip) | OVERRIDE_FEE_FLAG
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Deployed addresses */}
       <section
         className="mx-auto w-full max-w-[1240px] px-8 pt-10 pb-4 animate-paper-rise"
@@ -165,7 +228,7 @@ export default function AboutPage() {
             className="text-[11px] text-[var(--color-ink-muted)]"
             style={{ fontFamily: "var(--font-mono)" }}
           >
-            Pool: USDC/USDT · fee {giftPoolKey.fee} · tickSpacing {giftPoolKey.tickSpacing} · range [{giftPoolKey.tickLower}, {giftPoolKey.tickUpper}]
+            Pool: USDC/USDT · dynamic fee ({(HOOK_BASE_FEE / 10_000).toFixed(2)}–{(HOOK_TRANSIT_FEE / 10_000).toFixed(2)}%) · tickSpacing {giftPoolKey.tickSpacing} · range [{giftPoolKey.tickLower}, {giftPoolKey.tickUpper}]
           </div>
         </div>
 

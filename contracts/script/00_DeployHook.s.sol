@@ -15,21 +15,24 @@ contract DeployGiftHook is Script {
     function run() external returns (GiftHook hook) {
         IPoolManager poolManager = IPoolManager(vm.envAddress("UNICHAIN_SEPOLIA_POOL_MANAGER"));
         address positionManager = vm.envAddress("UNICHAIN_SEPOLIA_POSITION_MANAGER");
+        address giftSender = vm.envAddress("UNICHAIN_SEPOLIA_GIFT_SENDER");
 
         uint160 flags = uint160(
+            Hooks.AFTER_INITIALIZE_FLAG |
             Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
             Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG |
+            Hooks.BEFORE_SWAP_FLAG |
             Hooks.AFTER_SWAP_FLAG
         );
 
-        bytes memory ctorArgs = abi.encode(poolManager, positionManager);
+        bytes memory ctorArgs = abi.encode(poolManager, positionManager, giftSender);
         (address expected, bytes32 salt) = HookMiner.find(
             CREATE2_DEPLOYER, flags, type(GiftHook).creationCode, ctorArgs
         );
         uint256 pk = vm.envUint("PRIVATE_KEY");
 
         vm.startBroadcast(pk);
-        hook = new GiftHook{salt: salt}(poolManager, positionManager);
+        hook = new GiftHook{salt: salt}(poolManager, positionManager, giftSender);
         vm.stopBroadcast();
 
         require(address(hook) == expected, "deploy address mismatch");
