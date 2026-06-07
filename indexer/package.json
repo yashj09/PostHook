@@ -1,0 +1,21 @@
+{
+  "name": "posthook-indexer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Read-only on-chain event indexer for Posthook. Tails gift lifecycle + v4 pool Swap events across Unichain Sepolia and Base Sepolia and prints them as a live colored ledger.",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "picocolors": "^1.1.1",
+    "viem": "^2.50.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
+  }
+}
