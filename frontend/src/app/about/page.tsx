@@ -201,6 +201,21 @@ export default function AboutPage() {
               &ldquo;grows in the post&rdquo; line, produced by the hook itself —
               not a passive side effect of vanilla swap fees.
             </p>
+            <p
+              className="text-[15px] leading-[1.65] text-[var(--color-ink-soft)]"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              Under the hood this is a general{" "}
+              <em className="not-italic font-semibold text-[var(--color-ink)]">state-aware
+              dynamic-fee primitive</em> — a hook that reads an on-chain condition
+              and reprices swaps in response. We trigger on &ldquo;is a gift in
+              transit?&rdquo; and demo it on a stable pair for legibility. The very
+              same machinery, triggered on realized volatility instead, is a{" "}
+              <em className="not-italic font-semibold text-[var(--color-ink)]">fee-smoothing
+              / IL-compensation hook</em> for volatile pairs — squarely in
+              UHI9&rsquo;s Yield-Protected AMM design space. That generalization is
+              the natural next step.
+            </p>
             <div
               className="text-[12px] text-[var(--color-ink-muted)] border-l-2 border-[var(--color-rule)] pl-4"
               style={{ fontFamily: "var(--font-mono)" }}

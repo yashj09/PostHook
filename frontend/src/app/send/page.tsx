@@ -16,7 +16,8 @@ import { GiftCard } from "@/components/GiftCard";
 import { ChainBadge } from "@/components/ChainBadge";
 import { addresses } from "@/lib/contracts";
 import { commitmentOf, generateSecretPhrase } from "@/lib/secret";
-import { liquidityFor1to1 } from "@/lib/liquidity";
+import { liquidityForPrice } from "@/lib/liquidity";
+import { computePoolId } from "@/lib/yield";
 import {
   erc20Abi,
   giftSenderAbi,
@@ -25,6 +26,27 @@ import {
 
 const USDC_DECIMALS = 6;
 const USDT_DECIMALS = 6;
+
+// StateView.getSlot0 — read the pool's live price so we mint against reality,
+// not a stale 1:1 assumption. Minimal inline ABI (StateView isn't in wagmi gen).
+const stateViewAbi = [
+  {
+    type: "function",
+    name: "getSlot0",
+    stateMutability: "view",
+    inputs: [{ name: "poolId", type: "bytes32" }],
+    outputs: [
+      { name: "sqrtPriceX96", type: "uint160" },
+      { name: "tick", type: "int24" },
+      { name: "protocolFee", type: "uint24" },
+      { name: "lpFee", type: "uint24" },
+    ],
+  },
+] as const;
+
+// Over-authorize token maxes by this factor to absorb price drift between the
+// read and execution. GiftSender refunds any unused dust, so this is safe.
+const SLIPPAGE_BPS = 200n; // +2%
 
 function parseAmount(usd: string): bigint {
   const cleaned = usd.replace(/[,$]/g, "").trim();
@@ -50,9 +72,25 @@ export default function SendPage() {
   }, [secret]);
 
   const amount = useMemo(() => parseAmount(usd), [usd]);
-  const liquidity = useMemo(() => (amount > 0n ? liquidityFor1to1(amount) : 0n), [amount]);
-
   const onUnichain = chainId === addresses.unichainSepolia.chainId;
+
+  // Read the pool's LIVE price so liquidity is computed against the real ratio,
+  // not a stale 1:1 (the pool drifts as swaps happen + the hook's premium fee).
+  const { data: slot0 } = useReadContract({
+    address: addresses.unichainSepolia.stateView,
+    abi: stateViewAbi,
+    functionName: "getSlot0",
+    args: [computePoolId()],
+    chainId: addresses.unichainSepolia.chainId,
+    query: { enabled: onUnichain, refetchInterval: 12_000 },
+  });
+  const sqrtPriceX96 = slot0?.[0];
+
+  const liquidity = useMemo(
+    () =>
+      amount > 0n && sqrtPriceX96 ? liquidityForPrice(sqrtPriceX96, amount) : 0n,
+    [amount, sqrtPriceX96],
+  );
 
   // Allowances + balances
   const { data: usdcAllowance } = useReadContract({
@@ -194,11 +232,20 @@ export default function SendPage() {
   }, [step, txConfirmed]);
 
   async function handleDeposit() {
-    if (!address || amount === 0n) return;
+    if (!address || amount === 0n || liquidity === 0n) return;
     setError(null);
     const commitment = commitmentOf(secret);
     const expiresAt = BigInt(Math.floor(Date.now() / 1000) + 30 * 24 * 3600);
     const dstChainId = addresses.baseSepolia.chainId;
+
+    // Authorize a buffer above the target so a small price move between this
+    // read and execution can't trip PositionManager's MaximumAmountExceeded
+    // guard. Cap at the user's balance; GiftSender refunds unused dust.
+    const buffered = (amount * (10_000n + SLIPPAGE_BPS)) / 10_000n;
+    const cap = (bal?: bigint) => (bal !== undefined && buffered > bal ? bal : buffered);
+    const max0 = cap(usdcBalance as bigint | undefined);
+    const max1 = cap(usdtBalance as bigint | undefined);
+
     try {
       setStep("depositing");
       const hash = await writeContractAsync({
@@ -208,8 +255,8 @@ export default function SendPage() {
         args: [
           commitment,
           liquidity,
-          amount,
-          amount,
+          max0,
+          max1,
           dstChainId,
           expiresAt,
         ],
@@ -434,6 +481,7 @@ export default function SendPage() {
                         step !== "idle" ||
                         txPending ||
                         amount === 0n ||
+                        liquidity === 0n ||
                         insufficientUsdc ||
                         insufficientUsdt
                       }
@@ -467,7 +515,7 @@ export default function SendPage() {
             fromLine={address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "—"}
             toLine={recipientName ? `${recipientName} · Base Sepolia` : "—"}
             denomination={usd ? `$${Number(usd).toFixed(0)}` : "$"}
-            growthLine={`Will earn ≈ 5.8% in transit`}
+            growthLine={`Earns a 0.30% hook fee in transit`}
             postmarkCity="Unichain Sep."
             postmarkDate={new Date()
               .toLocaleDateString("en-US", { day: "2-digit", month: "short" })
@@ -475,7 +523,7 @@ export default function SendPage() {
               .replace(" ", " · ")}
           />
           <div className="mt-6 text-[11px] text-[var(--color-ink-muted)] max-w-[420px] text-right" style={{ fontFamily: "var(--font-mono)" }}>
-            liquidity ≈ {liquidity.toString().slice(0, 12)} units · ticks [-100, 100] · fee 500
+            liquidity ≈ {liquidity.toString().slice(0, 12)} units · ticks [-100, 100] · dynamic fee
           </div>
         </div>
       </section>

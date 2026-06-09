@@ -59,8 +59,25 @@ export function getLiquidityForAmounts(
 export const SQRT_PRICE_1_TO_1 = Q96;
 
 /**
- * For a 1:1 stable pool with deposits in equal token amounts, compute the
- * liquidity to request. amount0 == amount1 expected.
+ * Compute the liquidity to request for an equal-amount deposit at the pool's
+ * CURRENT price. This is the correct value to use when minting: the pool drifts
+ * off 1:1 as swaps happen (and our hook's premium fee accelerates that), so
+ * computing `L` against a stale 1:1 price produces token amounts that overshoot
+ * the slippage caps and revert with `MaximumAmountExceeded`. Always pass the
+ * live `sqrtPriceX96` read from the pool (StateView.getSlot0).
+ */
+export function liquidityForPrice(
+  sqrtPriceX96: bigint,
+  amountEach: bigint,
+  tickLower = -100,
+  tickUpper = 100,
+): bigint {
+  return getLiquidityForAmounts(sqrtPriceX96, tickLower, tickUpper, amountEach, amountEach);
+}
+
+/**
+ * @deprecated Assumes a frozen 1:1 price — only safe immediately after pool
+ * init. Use {@link liquidityForPrice} with the live price for real deposits.
  */
 export function liquidityFor1to1(
   amountEach: bigint,
