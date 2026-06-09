@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useAccount,
   useChainId,
@@ -65,6 +65,13 @@ export default function SendPage() {
   const [recipientName, setRecipientName] = useState("Bob");
   const [secret, setSecret] = useState<string>("");
   const [recipientChain] = useState<"base">("base");
+
+  // The phrase that was actually committed on-chain, captured the instant we
+  // build the deposit tx. Everything the recipient sees (the share note, the
+  // claim URL) must derive from THIS — never from `secret`, which the user can
+  // still regenerate/edit. If the two diverge, the gift becomes permanently
+  // unclaimable (the commitment is a one-way keccak of the committed string).
+  const committedSecretRef = useRef<string>("");
 
   // Generate a secret on first render so the UI never shows an empty value.
   useEffect(() => {
@@ -166,7 +173,11 @@ export default function SendPage() {
         `/api/gifts/by-index?index=${idx.toString()}`,
       ).then((r) => r.json()).catch(() => null);
       if (res?.giftId) {
-        router.push(`/sent/${res.giftId}?secret=${encodeURIComponent(secret)}`);
+        // Use the committed snapshot, NOT live `secret` — they're identical
+        // unless the user regenerated mid-flight, in which case the snapshot is
+        // the only phrase that matches the on-chain commitment.
+        const shared = committedSecretRef.current || secret;
+        router.push(`/sent/${res.giftId}?secret=${encodeURIComponent(shared)}`);
       } else {
         setStep("done");
       }
@@ -234,7 +245,12 @@ export default function SendPage() {
   async function handleDeposit() {
     if (!address || amount === 0n || liquidity === 0n) return;
     setError(null);
-    const commitment = commitmentOf(secret);
+    // Pin the phrase we're about to commit. The commitment and the redirect URL
+    // both read from this snapshot, so they can never disagree even if `secret`
+    // changes after this point.
+    const committedSecret = secret;
+    committedSecretRef.current = committedSecret;
+    const commitment = commitmentOf(committedSecret);
     const expiresAt = BigInt(Math.floor(Date.now() / 1000) + 30 * 24 * 3600);
     const dstChainId = addresses.baseSepolia.chainId;
 
@@ -414,7 +430,8 @@ export default function SendPage() {
                   <button
                     type="button"
                     onClick={() => setSecret(generateSecretPhrase())}
-                    className="text-[10px] uppercase tracking-[0.24em] text-[var(--color-ink-muted)] hover:text-[var(--color-stamp)]"
+                    disabled={step !== "idle"}
+                    className="text-[10px] uppercase tracking-[0.24em] text-[var(--color-ink-muted)] hover:text-[var(--color-stamp)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-[var(--color-ink-muted)]"
                     style={{ fontFamily: "var(--font-body)" }}
                   >
                     ↻ regenerate

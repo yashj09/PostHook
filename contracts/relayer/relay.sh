@@ -24,7 +24,13 @@
 #
 # Stops with Ctrl+C. Stores last-seen block in /tmp.
 
-set -euo pipefail
+# NB: intentionally NOT `set -e` and NOT `pipefail`. This is a long-running
+# watcher — a single failed cross-chain tx (e.g. GiftRecipient temporarily out
+# of USDC, or an RPC hiccup) must log a warning and let the loop continue, not
+# kill the relayer. pipefail is off too because handlers pipe `cast send` into
+# `grep | head`; head closing the pipe early raises SIGPIPE which `set -e` +
+# pipefail would treat as fatal.
+set -u
 
 : "${PRIVATE_KEY:?need PRIVATE_KEY in env}"
 : "${UNICHAIN_SEPOLIA_RPC:?}"; : "${BASE_SEPOLIA_RPC:?}"
@@ -55,6 +61,25 @@ echo "  Cursor (Base):     $(cat $BASE_CURSOR_FILE)"
 echo "  Logging to:        $RELAY_LOG"
 echo
 
+# send_tx <label> <args...> — run `cast send`, capture the full output, and
+# report. On revert/failure it prints a loud warning (with the reason) and
+# returns non-zero, but NEVER aborts the watcher. Callers ignore the return
+# code; the cursor still advances so we don't wedge on one bad gift forever.
+send_tx() {
+  local label=$1; shift
+  local out
+  out=$(cast send "$@" 2>&1)
+  local hash tx_status
+  hash=$(printf '%s\n' "$out" | grep -E "^transactionHash" | awk '{print $2}' | head -1)
+  tx_status=$(printf '%s\n' "$out" | grep -E "^status" | head -1)
+  if printf '%s\n' "$out" | grep -qiE "error|revert|exceeds|failed"; then
+    echo "  ⚠️  $label FAILED: $(printf '%s\n' "$out" | grep -iE "error|revert|exceeds" | head -1)"
+    return 1
+  fi
+  echo "  $label ok ${tx_status:+($tx_status)} ${hash:+tx=$hash}"
+  return 0
+}
+
 # ----- handlers -----
 # Each takes the on-chain data (hex with 0x prefix) and unpacks fields by
 # 32-byte offset. Field 0 is the sacrificial discard slot; the real cargo
@@ -73,11 +98,10 @@ handle_deposited() {
 
   local expected_amount=$((amount0 + amount1))
   echo "[deposit→mint] giftId=$gift_id commitment=$commitment expected=$expected_amount"
-  cast send "$BASE_SEPOLIA_GIFT_RECIPIENT" \
+  send_tx "mint" "$BASE_SEPOLIA_GIFT_RECIPIENT" \
     "adminMintGiftEntry(bytes32,bytes32,uint128,uint64)" \
     "$gift_id" "$commitment" "$expected_amount" "$expires" \
-    --rpc-url "$BASE_SEPOLIA_RPC" --private-key "$PRIVATE_KEY" \
-    2>&1 | grep -E "^status|^transactionHash" | head -2
+    --rpc-url "$BASE_SEPOLIA_RPC" --private-key "$PRIVATE_KEY" || true
 }
 
 handle_claimed() {
@@ -88,11 +112,10 @@ handle_claimed() {
   local claimer=0x${d:128+24:40}        # address in slot [128 .. 192) low 20 bytes
 
   echo "[claim→unwind] giftId=$gift_id claimer=$claimer"
-  cast send "$UNICHAIN_SEPOLIA_GIFT_SENDER" \
+  send_tx "unwind" "$UNICHAIN_SEPOLIA_GIFT_SENDER" \
     "adminUnwindGift(bytes32,address)" \
     "$gift_id" "$claimer" \
-    --rpc-url "$UNICHAIN_SEPOLIA_RPC" --private-key "$PRIVATE_KEY" \
-    2>&1 | grep -E "^status|^transactionHash" | head -2
+    --rpc-url "$UNICHAIN_SEPOLIA_RPC" --private-key "$PRIVATE_KEY" || true
 }
 
 handle_unwound() {
@@ -106,11 +129,25 @@ handle_unwound() {
 
   local total=$((principal + yield))
   echo "[unwound→deliver] giftId=$gift_id total=$total"
-  cast send "$BASE_SEPOLIA_GIFT_RECIPIENT" \
+
+  # Pre-flight: GiftRecipient pays the recipient out of its own USDC balance
+  # (CCTP isn't wired yet). If it's short, delivery would revert with
+  # "transfer amount exceeds balance" — warn loudly with a fix hint instead.
+  if [ -n "${BASE_SEPOLIA_USDC:-}" ]; then
+    local bal
+    bal=$(cast call "$BASE_SEPOLIA_USDC" "balanceOf(address)(uint256)" \
+      "$BASE_SEPOLIA_GIFT_RECIPIENT" --rpc-url "$BASE_SEPOLIA_RPC" 2>/dev/null \
+      | awk '{print $1}')
+    if [ -n "$bal" ] && [ "$bal" -lt "$total" ] 2>/dev/null; then
+      echo "  ⚠️  GiftRecipient USDC balance ($bal) < payout ($total) — delivery will revert."
+      echo "      Fund it:  cast send \$BASE_SEPOLIA_USDC 'transfer(address,uint256)' \$BASE_SEPOLIA_GIFT_RECIPIENT <amount> --rpc-url \$BASE_SEPOLIA_RPC --private-key \$PRIVATE_KEY"
+    fi
+  fi
+
+  send_tx "deliver" "$BASE_SEPOLIA_GIFT_RECIPIENT" \
     "adminDeliverGift(bytes32,uint128)" \
     "$gift_id" "$total" \
-    --rpc-url "$BASE_SEPOLIA_RPC" --private-key "$PRIVATE_KEY" \
-    2>&1 | grep -E "^status|^transactionHash" | head -2
+    --rpc-url "$BASE_SEPOLIA_RPC" --private-key "$PRIVATE_KEY" || true
 }
 
 extract_logs() {
