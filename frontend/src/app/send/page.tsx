@@ -12,6 +12,8 @@ import {
 } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
+import { decodeEventLog, type Hex } from "viem";
+
 import { GiftCard } from "@/components/GiftCard";
 import { ChainBadge } from "@/components/ChainBadge";
 import { addresses } from "@/lib/contracts";
@@ -149,40 +151,56 @@ export default function SendPage() {
   const [error, setError] = useState<string | null>(null);
 
   const { writeContractAsync } = useWriteContract();
-  const { isLoading: txPending, isSuccess: txConfirmed } =
-    useWaitForTransactionReceipt({ hash: txHash });
-
-  // After deposit confirms, look up the latest giftId and redirect.
-  const { refetch: refetchCount } = useReadContract({
-    address: addresses.unichainSepolia.giftSender,
-    abi: giftSenderAbi,
-    functionName: "giftCount",
-    chainId: addresses.unichainSepolia.chainId,
-    query: { enabled: false },
-  });
+  const {
+    data: depositReceipt,
+    isLoading: txPending,
+    isSuccess: txConfirmed,
+  } = useWaitForTransactionReceipt({ hash: txHash });
 
   useEffect(() => {
-    if (step !== "depositing" || !txConfirmed) return;
-    (async () => {
-      const c = await refetchCount();
-      const count = (c.data as bigint | undefined) ?? 0n;
-      if (count === 0n) return;
-      // Read the last giftId
-      const idx = count - 1n;
-      const res = await fetch(
-        `/api/gifts/by-index?index=${idx.toString()}`,
-      ).then((r) => r.json()).catch(() => null);
-      if (res?.giftId) {
-        // Use the committed snapshot, NOT live `secret` — they're identical
-        // unless the user regenerated mid-flight, in which case the snapshot is
-        // the only phrase that matches the on-chain commitment.
-        const shared = committedSecretRef.current || secret;
-        router.push(`/sent/${res.giftId}?secret=${encodeURIComponent(shared)}`);
-      } else {
-        setStep("done");
+    if (step !== "depositing" || !txConfirmed || !depositReceipt) return;
+
+    // CORE FIX: derive the giftId from THIS deposit's own receipt, never from
+    // `giftCount - 1`. The old approach assumed "the latest gift in the array is
+    // mine", which is a race — concurrent deposits, swap-noise, demo mints, or
+    // RPC lag can make the last index belong to a *different* gift. That paired
+    // our committed secret with someone else's giftId, so the recipient's phrase
+    // never matched. `depositGift` emits GiftDeposited(sender, giftId, …) in our
+    // own transaction, so the receipt is the only authoritative source.
+    let giftId: Hex | null = null;
+    for (const log of depositReceipt.logs) {
+      if (
+        log.address.toLowerCase() !==
+        addresses.unichainSepolia.giftSender!.toLowerCase()
+      )
+        continue;
+      try {
+        const decoded = decodeEventLog({
+          abi: giftSenderAbi,
+          data: log.data,
+          topics: log.topics,
+        });
+        if (decoded.eventName === "GiftDeposited") {
+          giftId = (decoded.args as { giftId: Hex }).giftId;
+          break;
+        }
+      } catch {
+        /* not the event we want — keep scanning */
       }
-    })();
-  }, [step, txConfirmed, refetchCount, router, secret]);
+    }
+
+    // Pair OUR giftId with OUR committed phrase. Both come from this single
+    // deposit, so they can never belong to different gifts.
+    const shared = committedSecretRef.current || secret;
+    if (giftId) {
+      router.push(`/sent/${giftId}?secret=${encodeURIComponent(shared)}`);
+    } else {
+      // Should never happen on a successful depositGift, but never silently
+      // redirect to a guessed gift — surface it instead.
+      setError("Deposited, but couldn't read the gift id from the receipt. Check the Sent page from your wallet history.");
+      setStep("done");
+    }
+  }, [step, txConfirmed, depositReceipt, router, secret]);
 
   async function handleMintTestUsdt() {
     if (!address) return;
