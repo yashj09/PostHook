@@ -99,6 +99,7 @@ export default function SentPage() {
 
   const [state, setState] = useState<GiftState | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedPhrase, setCopiedPhrase] = useState(false);
 
   useEffect(() => {
     if (!giftId) return;
@@ -214,12 +215,44 @@ It'll keep growing until you do. — Posthook`,
             <div className="text-[10px] uppercase tracking-[0.32em] text-[var(--color-stamp)] font-semibold mb-3" style={{ fontFamily: "var(--font-body)" }}>
               Mailable text
             </div>
-            <pre
-              className="bg-[var(--color-paper)] border border-[var(--color-rule)] p-4 text-[12px] whitespace-pre-wrap break-words text-[var(--color-ink)]"
+            <div
+              className="bg-[var(--color-paper)] border border-[var(--color-rule)] p-4 text-[12px] text-[var(--color-ink)] leading-[1.7]"
               style={{ fontFamily: "var(--font-mono)" }}
             >
-              {shareText}
-            </pre>
+              <div>You&apos;ve got post.</div>
+              <div className="mt-3">Open the seal here:</div>
+              <a
+                href={claimUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="break-all text-[var(--color-stamp)] underline decoration-[var(--color-brass)] underline-offset-2 hover:decoration-[var(--color-stamp)]"
+              >
+                {claimUrl}
+              </a>
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <span>
+                  The phrase is:{" "}
+                  <span className="text-[var(--color-ink)] font-semibold">
+                    {secret || "(set this when sending)"}
+                  </span>
+                </span>
+                {secret && (
+                  <button
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(secret);
+                      setCopiedPhrase(true);
+                      setTimeout(() => setCopiedPhrase(false), 1800);
+                    }}
+                    className="px-2 py-0.5 border border-[var(--color-rule)] text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink-muted)] hover:text-[var(--color-stamp)] hover:border-[var(--color-stamp)] rounded-sm transition-colors"
+                    style={{ fontFamily: "var(--font-body)" }}
+                    aria-label="Copy the phrase"
+                  >
+                    {copiedPhrase ? "✓ copied" : "copy phrase"}
+                  </button>
+                )}
+              </div>
+              <div className="mt-3">It&apos;ll keep growing until you do. — Posthook</div>
+            </div>
             <div className="mt-3 flex gap-3 items-center">
               <button
                 onClick={async () => {
