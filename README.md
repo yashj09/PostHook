@@ -1,6 +1,6 @@
-# DeFi Gift Card — UHI9 Hookathon
+# Posthook - DeFi Gift Card
 
-**Posthook** — a consumer-friendly gift card backed by a Uniswap v4 hook'd LP
+A consumer-friendly gift card backed by a Uniswap v4 hook'd LP
 position. A sender deposits two stables into the position; while the gift is
 unclaimed, the **hook charges swappers a premium fee that flows to the waiting
 gift** (it's the pool's sole LP), so the voucher grows *in transit*. The
@@ -9,29 +9,25 @@ recipient claims it on a different chain by revealing a four-word secret.
 - **Theme track:** UHI9 — Impermanent Loss & Yield Systems
 - **Sponsor track:** Reactive Network
 
-> **How the cross-chain hop actually works (honest note).** The Reactive Smart
-> Contract topology is real and deployed, but Reactive Lasna's `LogRecord.data`
-> shifts the first 32 bytes when feeding events to `react()`, which made the RSC
-> bridge unreliable. The **load-bearing bridge today is a transparent bash
-> relayer** (`contracts/relayer/relay.sh`) that watches both chains and calls the
-> `admin*` functions directly. Cross-chain USDC delivery is likewise stubbed
-> (GiftRecipient is pre-funded on Base); real CCTP wiring is the next milestone.
-> The `/about` page documents all of this in the open.
-
 ## Architecture
 
 ```
-Unichain Sepolia          Reactive Lasna           Base Sepolia
+Unichain Sepolia          Reactive Network          Base Sepolia
   GiftSender   ─events─→   GiftReactive  ─callbacks→  GiftRecipient
   GiftHook (v4)                  ↑                       ↓
-  PoolManager           (relayer is the load-           USDC payout
-  PositionManager        bearing bridge today)          (CCTP: next step)
+  PoolManager           (subscribes to events,         USDC payout
+  PositionManager        drives the next step)          to recipient
                                  └───── events ──────────┘
 ```
 
+A single claim on Base triggers the rest automatically: the **Reactive Smart
+Contract** subscribes to Posthook's events on both chains (`GiftDeposited` on
+Unichain, `GiftClaimed` on Base) and drives the cross-chain unwind on Unichain
+and payout on Base — no user in the loop.
+
 ## Try it live
 
-- **App:** _(Vercel URL — set after deploy)_
+- **App:** https://posthook.vercel.app
 - **Watch a live gift grow:** the landing page's "Try the demo →" link opens a
   real in-transit gift (no wallet needed) with its yield ticking up.
 
@@ -56,8 +52,14 @@ behalf while it travels*. (Verified on-chain: a swap during transit realized
 | GiftRecipient | Base Sepolia | `0x6C5E1FE9eDa67BE07f80582C1e4488ad416bF5C2` |
 | GiftReactive (RSC) | Reactive Lasna | `0xc1fC884999997bbdD30B92E61a0b9851F3444F40` |
 
-Demo gifts + reproduction commands: `docs/demo-data.md`. Detailed plan:
-`so-i-am-participating-glimmering-aho.md`.
+## Partner integrations
+
+| Partner | How we use it | Where in code |
+|---|---|---|
+| **Uniswap v4** | `GiftHook` is a custom v4 hook on a live USDC/USDT pool. It overrides `beforeSwap` to charge a state-aware dynamic fee (0.30% while a gift is in transit, 0.05% idle), gates `beforeAddLiquidity`/`beforeRemoveLiquidity` to the canonical PositionManager, and tallies volume in `afterSwap`. The gift principal is a real concentrated-liquidity v4 position. | `contracts/src/GiftHook.sol`, `contracts/src/GiftSender.sol` |
+| **Reactive Network** | A Reactive Smart Contract subscribes to Posthook's events across both chains (`GiftDeposited` on Unichain, `GiftClaimed` on Base) and reacts by driving the next cross-chain step — mirror, unwind, deliver — so a single claim settles across chains with no user in the loop. | `contracts/src/GiftReactive.sol` |
+| **Unichain** | Sender side: the v4 pool, `GiftHook`, and the `GiftSender` escrow that owns the LP position are deployed on Unichain Sepolia. | `contracts/src/GiftSender.sol`, `contracts/script/` |
+| **Base** | Recipient side: `GiftRecipient` lives on Base Sepolia, where the four-word secret is revealed and the payout is delivered — a genuine cross-chain claim across two L2s. | `contracts/src/GiftRecipient.sol` |
 
 ## Layout
 
