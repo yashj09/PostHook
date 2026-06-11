@@ -30,6 +30,9 @@ and payout on Base — no user in the loop.
 - **App:** https://posthook.vercel.app
 - **Watch a live gift grow:** the landing page's "Try the demo →" link opens a
   real in-transit gift (no wallet needed) with its yield ticking up.
+<img width="1482" height="834" alt="Screenshot 2026-06-12 at 1 46 56 AM" src="https://github.com/user-attachments/assets/06f816dd-2ebc-4b88-968a-4be276b0cf21" />
+
+<img width="1156" height="769" alt="Screenshot 2026-06-12 at 1 47 29 AM" src="https://github.com/user-attachments/assets/d4fa7403-1bb8-4aff-8236-d9611b7c7433" />
 
 ## The hook (theme: IL & Yield Systems)
 
